@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{# Prediction output served at "/result". Receives `result` from the route. #}
+{% block title %}Prediction Result{% endblock %}
+
+{% block content %}
+{% set color = {'Approved': 'success', 'Medium Risk': 'warning', 'High Risk': 'danger'}[result.label] %}
+<div class="container py-4" style="max-width:720px">
+  <div class="card p-4 text-center">
+    <h2 class="fw-bold mb-3">Prediction Result</h2>
+    <p><span class="badge text-bg-{{ color }} fs-3 px-4 py-2">{{ result.label }}</span></p>
+
+    <p class="mb-1 text-muted">Estimated default risk</p>
+    <div class="progress mb-1" role="progressbar" aria-valuenow="{{ result.risk_percent }}" aria-valuemin="0" aria-valuemax="100" style="height:24px">
+      <div class="progress-bar bg-{{ color }}" style="width: {{ result.risk_percent }}%">{{ result.risk_percent }}%</div>
+    </div>
+
+    <div class="alert alert-{{ color }} mt-4 mb-4 text-start">
+      <strong>Recommendation:</strong> {{ result.recommendation }}
+    </div>
+
+    <a href="{{ url_for('main.predict') }}" class="btn btn-primary">Evaluate Another Application</a>
+  </div>
+</div>
+{% endblock %}

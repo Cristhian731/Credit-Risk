@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{# Customer form served at "/predict"; posts to the same route. #}
+{% block title %}Predict Credit Risk{% endblock %}
+
+{% macro num(name, label, min, max, step=1) %}
+  <div class="col-md-4">
+    <label for="{{ name }}" class="form-label">{{ label }}</label>
+    <input type="number" class="form-control" id="{{ name }}" name="{{ name }}"
+           min="{{ min }}" max="{{ max }}" step="{{ step }}" value="{{ form.get(name, '') }}" required>
+  </div>
+{% endmacro %}
+
+{% macro select(name, label, options) %}
+  <div class="col-md-4">
+    <label for="{{ name }}" class="form-label">{{ label }}</label>
+    <select class="form-select" id="{{ name }}" name="{{ name }}" required>
+      <option value="" disabled {% if not form.get(name) %}selected{% endif %}>Select...</option>
+      {% for value, text in options %}
+        <option value="{{ value }}" {% if form.get(name) == value %}selected{% endif %}>{{ text }}</option>
+      {% endfor %}
+    </select>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card p-4">
+    <h2 class="fw-bold mb-1">Customer Information</h2>
+    <p class="text-muted">Complete all fields to evaluate the loan application.</p>
+
+    <form method="post" action="{{ url_for('main.predict') }}" class="row g-3">
+      {{ num('age', 'Age', 18, 100) }}
+      {{ select('gender', 'Gender', [('female', 'Female'), ('male', 'Male'), ('other', 'Other')]) }}
+      {{ num('monthly_income', 'Monthly Income', 0, 10000000, 0.01) }}
+      {{ select('employment_status', 'Employment Status', [('employed', 'Employed'), ('self_employed', 'Self-employed'), ('retired', 'Retired'), ('unemployed', 'Unemployed')]) }}
+      {{ num('years_employment', 'Years of Employment', 0, 60, 0.1) }}
+      {{ num('credit_score', 'Credit Score (300-850)', 300, 850) }}
+      {{ num('existing_debt', 'Existing Debt', 0, 100000000, 0.01) }}
+      {{ num('dti_ratio', 'Debt-to-Income Ratio (%)', 0, 100, 0.1) }}
+      {{ num('loan_amount', 'Loan Amount', 1, 100000000, 0.01) }}
+      {{ num('loan_term', 'Loan Term (months)', 1, 480) }}
+      {{ num('previous_loans', 'Previous Loans', 0, 100) }}
+      {{ select('payment_history', 'Payment History', [('good', 'Good'), ('fair', 'Fair'), ('poor', 'Poor')]) }}
+
+      <div class="col-12 text-end">
+        <button type="submit" class="btn btn-primary btn-lg px-5">Evaluate Application</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

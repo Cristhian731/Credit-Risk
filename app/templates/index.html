@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{# Landing page served at "/". #}
+{% block content %}
+<section class="hero text-center">
+  <div class="container">
+    <h1 class="display-4 fw-bold">Credit Risk and Loan Viability Prediction Platform</h1>
+    <p class="h4 my-3">Smarter lending decisions, powered by Machine Learning.</p>
+    <p class="lead mb-4 mx-auto" style="max-width:720px">
+      A web-based platform that analyzes customer financial and demographic data to predict whether a loan
+      application is viable, helping financial institutions assess risk faster and more accurately.
+    </p>
+    <a href="{{ url_for('main.predict') }}" class="btn btn-warning btn-lg px-5 fw-semibold">Predict Credit Risk</a>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <h2 class="text-center fw-bold mb-4">The Problem</h2>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Too Much Information</h5>
+        <p class="mb-0">Financial institutions handle large amounts of customer data in each credit application.</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Costly Mistakes</h5>
+        <p class="mb-0">Incorrect decisions can lead to financial losses and higher default rates.</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Slow Processes</h5>
+        <p class="mb-0">Traditional evaluation is often manual, slow, and inefficient.</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>A Data-Driven Solution</h5>
+        <p class="mb-0">Machine learning supports faster and more accurate decision-making.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-soft text-center">
+  <div class="container">
+    <h2 class="fw-bold mb-3">Project Objective</h2>
+    <p class="fs-4 fst-italic mx-auto" style="max-width:800px">
+      Develop a web-based machine learning platform capable of predicting loan viability using customer
+      financial and demographic information.
+    </p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <h2 class="text-center fw-bold mb-4">How the Platform Works</h2>
+    <div class="row g-4 text-center">
+      <div class="col-md"><h3 class="text-primary">1</h3><h5>Enter Data</h5><p>Enter the customer's information.</p></div>
+      <div class="col-md"><h3 class="text-primary">2</h3><h5>Validate</h5><p>The system processes and validates the data.</p></div>
+      <div class="col-md"><h3 class="text-primary">3</h3><h5>Analyze</h5><p>The trained machine learning model is applied.</p></div>
+      <div class="col-md"><h3 class="text-primary">4</h3><h5>Predict</h5><p>A prediction is generated.</p></div>
+      <div class="col-md"><h3 class="text-primary">5</h3><h5>Decide</h5>
+        <p><span class="badge text-bg-success">Approved</span>
+           <span class="badge text-bg-warning">Medium Risk</span>
+           <span class="badge text-bg-danger">High Risk</span></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-soft">
+  <div class="container">
+    <h2 class="text-center fw-bold mb-4">Benefits</h2>
+    <div class="row g-4">
+      <div class="col-md-6"><div class="card h-100 p-4"><h4>For Financial Institutions</h4>
+        <ul class="mb-0"><li>Faster credit evaluation</li><li>Reduced default risk</li>
+        <li>Better decision-making</li><li>Increased operational efficiency</li></ul></div></div>
+      <div class="col-md-6"><div class="card h-100 p-4"><h4>For Customers</h4>
+        <ul class="mb-0"><li>Faster responses</li><li>Fair and objective evaluations</li>
+        <li>Improved user experience</li></ul></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <h2 class="text-center fw-bold mb-4">Technologies &amp; Methodology</h2>
+    <div class="row g-4 text-center">
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Frontend</h5><p class="mb-0">HTML · CSS · Bootstrap · JavaScript</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Backend</h5><p class="mb-0">Python · Flask</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Machine Learning</h5><p class="mb-0">Scikit-Learn · Pandas · NumPy</p></div></div>
+      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Database</h5><p class="mb-0">MySQL</p></div></div>
+      <div class="col-md-6"><div class="card h-100 p-3"><h5>Software Engineering</h5><p class="mb-0">Scrum</p></div></div>
+      <div class="col-md-6"><div class="card h-100 p-3"><h5>Data Science</h5><p class="mb-0">CRISP-DM</p></div></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
