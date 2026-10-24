@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<!-- Base layout: Bootstrap 5, navbar, flash messages, footer. Pages extend this. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Credit Risk and Loan Viability Prediction Platform{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .hero { background: linear-gradient(135deg, #0b2545, #13518a); color: #fff; padding: 100px 0; }
+    .card { border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .bg-soft { background: #f3f6fa; }
+    footer { background: #0b2545; color: #cfd8e3; }
+  </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <nav class="navbar navbar-expand-lg navbar-dark" style="background:#0b2545">
+    <div class="container">
+      <a class="navbar-brand fw-semibold" href="{{ url_for('main.index') }}">Credit Risk Platform</a>
+      <div class="ms-auto">
+        <a class="btn btn-warning btn-sm" href="{{ url_for('main.predict') }}">Predict Credit Risk</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-grow-1">
+    <div class="container mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="py-4 text-center">
+    <p class="mb-1 fw-semibold">University Project</p>
+    <p class="mb-1">Machine Learning for Credit Risk &amp; Default Prediction</p>
+    <p class="mb-0">2026</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
