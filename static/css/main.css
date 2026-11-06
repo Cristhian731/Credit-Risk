@@ -190,6 +190,86 @@ td {
   cursor: pointer;
 }
 
+/* Credit evaluation */
+.form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 16px;
+}
+
+.form-actions {
+  text-align: right;
+}
+
+.button {
+  display: inline-block;
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.result {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.result .flash {
+  text-align: left;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 20px;
+  border-radius: 999px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.meter {
+  height: 20px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.meter-bar {
+  height: 100%;
+}
+
+.badge-low,
+.meter-low {
+  background: #2e8b57;
+}
+
+.badge-medium,
+.meter-medium {
+  background: #d48a00;
+}
+
+.badge-high,
+.meter-high {
+  background: #c0392b;
+}
+
+.flash-low {
+  background: #e7f6ee;
+  border-color: #b5e0c7;
+}
+
+.flash-medium {
+  background: #fff5e0;
+  border-color: #f0d49a;
+}
+
+.flash-high {
+  background: #fdecec;
+  border-color: #f2b8b8;
+}
+
 .flash {
   padding: 12px 16px;
   border-radius: var(--radius);

@@ -10,6 +10,7 @@ PAGES = [
     "/transactions/",
     "/transactions/new",
     "/dashboard/",
+    "/credit/",
     "/auth/login",
 ]
 
@@ -53,7 +54,7 @@ def test_page_responds_ok(fake_auth_app, path):
 
 def test_base_layout_shows_navigation(fake_auth_app):
     html = fake_auth_app.test_client().get("/").get_data(as_text=True)
-    for label in ("Home", "Transactions", "Dashboard", "Login"):
+    for label in ("Home", "Transactions", "Dashboard", "Credit Evaluation", "Login"):
         assert label in html
 
 

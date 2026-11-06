@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Credit Evaluation &middot; Credit Risk{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <h1>Credit Evaluation</h1>
+    <p class="muted">Complete all fields to evaluate the loan application.</p>
+
+    <form method="post" action="{{ url_for('credit.index') }}" class="form">
+      <div class="form-grid">
+        {% for name in field_order %}
+          {% if name in numeric_fields %}
+            {% set label, _type, min, max, step = numeric_fields[name] %}
+            <label>{{ label }}
+              <input type="number" name="{{ name }}" min="{{ min }}" max="{{ max }}" step="{{ step }}"
+                     value="{{ form.get(name, '') }}" required>
+            </label>
+          {% else %}
+            {% set label, options = choice_fields[name] %}
+            <label>{{ label }}
+              <select name="{{ name }}" required>
+                <option value="" disabled {% if not form.get(name) %}selected{% endif %}>Select...</option>
+                {% for value, text in options %}
+                  <option value="{{ value }}" {% if form.get(name) == value %}selected{% endif %}>{{ text }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <p class="form-actions"><button type="submit">Evaluate application</button></p>
+    </form>
+  </section>
+{% endblock %}

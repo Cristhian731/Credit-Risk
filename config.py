@@ -1,6 +1,8 @@
 """Configuration classes, selected by name in ``app.create_app()``."""
 import os
 
+from ml.features import MODEL_PATH, SCALER_PATH
+
 
 def _env_flag(name, default):
     """Read a boolean environment variable ("true"/"false")."""
@@ -21,6 +23,14 @@ class Config:
     # When True, app/auth/services.py answers with a fake user so the rest of
     # the app can be built before real authentication exists.
     FAKE_AUTH = _env_flag("FAKE_AUTH", False)
+
+    # Credit viability model saved by the ml/ package.
+    CREDIT_MODEL_PATH = os.environ.get("CREDIT_MODEL_PATH", MODEL_PATH)
+    CREDIT_SCALER_PATH = os.environ.get("CREDIT_SCALER_PATH", SCALER_PATH)
+    # Default-probability cut-offs: below the first is "Approved", below the
+    # second is "Medium Risk", anything else is "High Risk".
+    CREDIT_APPROVED_MAX_RISK = 0.33
+    CREDIT_MEDIUM_MAX_RISK = 0.66
 
 
 class DevelopmentConfig(Config):

@@ -5,6 +5,7 @@ from flask import Flask
 
 from config import config_by_name
 
+from .credit.services import PredictionService
 from .extensions import db
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -34,6 +35,15 @@ def create_app(config_name=None):
         )
 
     db.init_app(app)
+
+    # One shared instance: the model is loaded once, not per request.
+    app.extensions["credit_predictor"] = PredictionService(
+        model_path=app.config["CREDIT_MODEL_PATH"],
+        scaler_path=app.config["CREDIT_SCALER_PATH"],
+        approved_max=app.config["CREDIT_APPROVED_MAX_RISK"],
+        medium_max=app.config["CREDIT_MEDIUM_MAX_RISK"],
+    )
+
     register_blueprints(app)
     return app
 
@@ -41,6 +51,7 @@ def create_app(config_name=None):
 def register_blueprints(app):
     """Attach every feature blueprint to the application."""
     from .auth import bp as auth_bp
+    from .credit import bp as credit_bp
     from .dashboard import bp as dashboard_bp
     from .main import bp as main_bp
     from .transactions import bp as transactions_bp
@@ -48,4 +59,5 @@ def register_blueprints(app):
     app.register_blueprint(main_bp)
     app.register_blueprint(transactions_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(credit_bp)
     app.register_blueprint(auth_bp)
