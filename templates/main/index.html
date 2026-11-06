@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="card">
+    <h1>Welcome to Credit Risk</h1>
+    <p>Record your income and expenses and keep track of where your money goes.</p>
+    <p class="muted">Coming soon: credit viability prediction based on customer data.</p>
+    <p>
+      <a href="{{ url_for('transactions.index') }}">View transactions</a>
+      &middot;
+      <a href="{{ url_for('dashboard.index') }}">Open dashboard</a>
+    </p>
+  </section>
+{% endblock %}

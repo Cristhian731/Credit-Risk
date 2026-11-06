@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard &middot; Credit Risk{% endblock %}
+
+{% block content %}
+  <h1>Dashboard</h1>
+  <p class="muted">Sample data shown until the database models are ready.</p>
+
+  <div class="stats">
+    <section class="card">
+      <h2>Income</h2>
+      <p class="stat">{{ "{:,.2f}".format(summary.income) }}</p>
+    </section>
+    <section class="card">
+      <h2>Expenses</h2>
+      <p class="stat">{{ "{:,.2f}".format(summary.expense) }}</p>
+    </section>
+    <section class="card">
+      <h2>Balance</h2>
+      <p class="stat">{{ "{:,.2f}".format(summary.balance) }}</p>
+    </section>
+  </div>
+{% endblock %}
