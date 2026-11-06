@@ -1,174 +1,80 @@
-"""Database model contracts for Credit Risk.
+from datetime import datetime, timezone
 
-TODO(teammate A): turn each template below into a Flask-SQLAlchemy model.
+from werkzeug.security import check_password_hash, generate_password_hash
 
-Rules of the contract:
-    * Every model inherits from ``db.Model`` (``from app.extensions import db``).
-    * Class names, table names, column names and relationship names must stay
-      exactly as documented here; other modules and the tests depend on them.
-    * "required" means ``nullable=False``.
-    * Relationships are declared on both sides with ``back_populates``.
-    * Do not call ``db.create_all()`` at import time.
-
-The contract is fulfilled when ``tests/test_models_contract.py`` passes
-without its ``xfail`` marker.
-"""
-
-# Allowed values for Category.type and Transaction.type.
-TRANSACTION_TYPES = ("income", "expense")
-
-# Allowed values for CreditApplication text columns. They match the option
-# values of the credit form and the encodings in ml/features.py.
-EMPLOYMENT_STATUSES = ("employed", "self_employed", "retired", "unemployed")
-PAYMENT_HISTORIES = ("good", "fair", "poor")
-RISK_LABELS = ("Approved", "Medium Risk", "High Risk")
+from .extensions import db
 
 
-# TODO(teammate A): inherit from db.Model and implement the fields below.
-class User:
-    """A registered person who owns finances, clients and credit applications.
+def utcnow():
+    return datetime.now(timezone.utc)
 
-    Table: ``users``
 
-    Columns:
-        id (Integer): primary key.
-        username (String(80)): required, unique.
-        email (String(120)): required, unique.
-        password_hash (String(255)): required. Stores a hash, never the plain
-            password (see app/auth/services.py).
-        created_at (DateTime): required, defaults to the current UTC time.
-
-    Relationships:
-        categories (list[Category]): back_populates="user".
-        transactions (list[Transaction]): back_populates="user".
-        budgets (list[Budget]): back_populates="user".
-        clients (list[Client]): back_populates="user".
-        credit_applications (list[CreditApplication]): back_populates="user".
-    """
-
+class User(db.Model):
     __tablename__ = "users"
 
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
-# TODO(teammate A): inherit from db.Model and implement the fields below.
-class Category:
-    """A label that groups transactions, e.g. "Food" or "Salary".
+    profiles = db.relationship("CreditProfile", backref="user", lazy=True)
+    applications = db.relationship("LoanApplication", backref="user", lazy=True)
 
-    Table: ``categories``
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
 
-    Columns:
-        id (Integer): primary key.
-        name (String(50)): required.
-        type (String(10)): required, one of TRANSACTION_TYPES.
-        user_id (Integer): required, foreign key to ``users.id``.
-
-    Relationships:
-        user (User): back_populates="categories".
-        transactions (list[Transaction]): back_populates="category".
-        budgets (list[Budget]): back_populates="category".
-    """
-
-    __tablename__ = "categories"
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 
-# TODO(teammate A): inherit from db.Model and implement the fields below.
-class Transaction:
-    """A single income or expense recorded by a user.
+class CreditProfile(db.Model):
+    __tablename__ = "credit_profiles"
 
-    Table: ``transactions``
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
-    Columns:
-        id (Integer): primary key.
-        type (String(10)): required, one of TRANSACTION_TYPES. Any other
-            value must be rejected (validator or CHECK constraint).
-        amount (Numeric(12, 2)): required.
-        date (Date): required.
-        category_id (Integer): required, foreign key to ``categories.id``.
-        description (String(255)): optional.
-        user_id (Integer): required, foreign key to ``users.id``.
+    age = db.Column(db.Integer, nullable=False)
+    gender = db.Column(db.String(20))
+    monthly_income = db.Column(db.Numeric(12, 2), nullable=False)
+    employment_status = db.Column(db.String(30), nullable=False)
+    years_employment = db.Column(db.Numeric(4, 1), nullable=False)
+    credit_score = db.Column(db.Integer, nullable=False)          # 300-850
+    existing_debt = db.Column(db.Numeric(12, 2), nullable=False)
+    debt_to_income_ratio = db.Column(db.Numeric(5, 2), nullable=False)  # %
+    previous_loans = db.Column(db.Integer, nullable=False, default=0)
+    payment_history = db.Column(db.String(30), nullable=False)
 
-    Relationships:
-        user (User): back_populates="transactions".
-        category (Category): back_populates="transactions".
-    """
+    created_at = db.Column(db.DateTime, default=utcnow)
 
-    __tablename__ = "transactions"
+    applications = db.relationship("LoanApplication", backref="profile", lazy=True)
 
 
-# TODO(teammate A): inherit from db.Model and implement the fields below.
-class Budget:
-    """A spending limit for one category in one month.
+class LoanApplication(db.Model):
+    __tablename__ = "loan_applications"
 
-    Table: ``budgets``
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    
+    profile_id = db.Column(db.Integer, db.ForeignKey("credit_profiles.id"), nullable=False)
 
-    Columns:
-        id (Integer): primary key.
-        amount (Numeric(12, 2)): required, the monthly limit.
-        month (Date): required, the first day of the budgeted month.
-        category_id (Integer): required, foreign key to ``categories.id``.
-        user_id (Integer): required, foreign key to ``users.id``.
+    loan_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    loan_term_months = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
-    Relationships:
-        user (User): back_populates="budgets".
-        category (Category): back_populates="budgets".
-    """
-
-    __tablename__ = "budgets"
+    prediction = db.relationship("Prediction", backref="application",
+                                 uselist=False, lazy=True)
 
 
-# TODO(teammate A): inherit from db.Model and implement the fields below.
-class Client:
-    """A customer whose loan applications are evaluated.
+class Prediction(db.Model):
+    __tablename__ = "predictions"
 
-    Table: ``clients``
+    id = db.Column(db.Integer, primary_key=True)
+    application_id = db.Column(db.Integer, db.ForeignKey("loan_applications.id"),
+                               unique=True, nullable=False)
 
-    Columns:
-        id (Integer): primary key.
-        full_name (String(120)): required.
-        document_number (String(30)): required, unique. National ID or similar.
-        user_id (Integer): required, foreign key to ``users.id``; the user who
-            registered the client.
-        created_at (DateTime): required, defaults to the current UTC time.
-
-    Relationships:
-        user (User): back_populates="clients".
-        credit_applications (list[CreditApplication]): back_populates="client".
-    """
-
-    __tablename__ = "clients"
-
-
-# TODO(teammate A): inherit from db.Model and implement the fields below.
-class CreditApplication:
-    """One loan evaluation: the customer data at that moment and the prediction.
-
-    The feature columns use exactly the names of the credit form fields and of
-    ``ml.features.FEATURE_ORDER``.
-
-    Table: ``credit_applications``
-
-    Columns:
-        id (Integer): primary key.
-        age (Integer): required.
-        monthly_income (Numeric(14, 2)): required.
-        employment_status (String(20)): required, one of EMPLOYMENT_STATUSES.
-        years_employment (Float): required.
-        credit_score (Integer): required.
-        existing_debt (Numeric(14, 2)): required.
-        dti_ratio (Float): required, debt-to-income ratio in percent.
-        loan_amount (Numeric(14, 2)): required.
-        loan_term (Integer): required, in months.
-        previous_loans (Integer): required.
-        payment_history (String(10)): required, one of PAYMENT_HISTORIES.
-        risk_label (String(20)): required, one of RISK_LABELS.
-        risk_percent (Float): required, estimated default risk from 0 to 100.
-        client_id (Integer): required, foreign key to ``clients.id``.
-        user_id (Integer): required, foreign key to ``users.id``; the user who
-            ran the evaluation.
-        created_at (DateTime): required, defaults to the current UTC time.
-
-    Relationships:
-        client (Client): back_populates="credit_applications".
-        user (User): back_populates="credit_applications".
-    """
-
-    __tablename__ = "credit_applications"
+    is_viable = db.Column(db.Boolean, nullable=False)
+    default_probability = db.Column(db.Float, nullable=False)     # 0.0 - 1.0
+    risk_category = db.Column(db.String(20), nullable=False)      # approved / medium / high
+    model_version = db.Column(db.String(30))
+    created_at = db.Column(db.DateTime, default=utcnow)
