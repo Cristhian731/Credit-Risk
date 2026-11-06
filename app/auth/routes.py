@@ -1,15 +1,36 @@
 """Authentication views.
 
-Only a placeholder login page exists so the navigation link works.
+The login form lives on the home page (templates/auth/_login_form.html) and
+posts to auth.login. These views are placeholders until the real login exists.
 """
-from flask import render_template
+from flask import flash, redirect, url_for
 
 from . import bp
 
+NOT_AVAILABLE_MESSAGE = "Login is not available yet."
 
-# TODO(teammate B): replace with the real login view (GET shows the form, POST
-# calls services.authenticate_user) and add register and logout views.
-@bp.route("/login")
+
+def _not_available():
+    flash(NOT_AVAILABLE_MESSAGE, "info")
+    return redirect(url_for("main.index"))
+
+
+# TODO(teammate B): implement authentication
+@bp.route("/login", methods=["GET", "POST"])
 def login():
-    """Placeholder login page."""
-    return render_template("auth/login.html")
+    """POST: log in with the fields email, password and remember."""
+    return _not_available()
+
+
+# TODO(teammate B): implement authentication
+@bp.route("/register", methods=["GET", "POST"])
+def register():
+    """GET: show the registration form. POST: create the account."""
+    return _not_available()
+
+
+# TODO(teammate B): implement authentication
+@bp.route("/logout", methods=["GET", "POST"])
+def logout():
+    """Log the current user out and go back to the home page."""
+    return _not_available()

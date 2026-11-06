@@ -5,6 +5,7 @@ from flask import Flask
 
 from config import config_by_name
 
+from .auth.services import auth_enabled, get_current_user
 from .credit.services import PredictionService
 from .extensions import db
 
@@ -45,6 +46,12 @@ def create_app(config_name=None):
     )
 
     register_blueprints(app)
+
+    @app.context_processor
+    def inject_auth_state():
+        # Available in every template: current_user and auth_enabled.
+        return {"current_user": get_current_user(), "auth_enabled": auth_enabled()}
+
     return app
 
 

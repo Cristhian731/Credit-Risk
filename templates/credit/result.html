@@ -1,24 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Credit Result &middot; Credit Risk{% endblock %}
+{% block title %}Prediction Result &middot; Credit Risk{% endblock %}
 
 {% block content %}
-  {% set level = {'Approved': 'low', 'Medium Risk': 'medium', 'High Risk': 'high'}[result.label] %}
-  <section class="card result">
-    <h1>Prediction Result</h1>
-    <p><span class="badge badge-{{ level }}">{{ result.label }}</span></p>
+{% set color = {'Approved': 'success', 'Medium Risk': 'warning', 'High Risk': 'danger'}[result.label] %}
+<div class="container py-4" style="max-width: 720px">
+  <div class="card p-4 text-center">
+    <h2 class="fw-bold mb-3">Prediction Result</h2>
+    <p><span class="badge text-bg-{{ color }} fs-3 px-4 py-2">{{ result.label }}</span></p>
 
-    <p class="muted">Estimated default risk</p>
-    <div class="meter" role="meter" aria-valuenow="{{ result.risk_percent }}" aria-valuemin="0" aria-valuemax="100">
-      <div class="meter-bar meter-{{ level }}" style="width: {{ result.risk_percent }}%"></div>
+    <p class="mb-1 text-muted">Estimated default risk</p>
+    <div class="progress mb-1" role="progressbar" aria-valuenow="{{ result.risk_percent }}"
+         aria-valuemin="0" aria-valuemax="100" style="height: 24px">
+      <div class="progress-bar bg-{{ color }}" style="width: {{ result.risk_percent }}%">{{ result.risk_percent }}%</div>
     </div>
-    <p class="stat">{{ result.risk_percent }}%</p>
 
-    <div class="flash flash-{{ level }}">
+    <div class="alert alert-{{ color }} mt-4 mb-4 text-start">
       <strong>Recommendation:</strong> {{ result.recommendation }}
     </div>
 
-    <p class="muted">The current model is a placeholder trained on synthetic data.</p>
-    <p><a class="button" href="{{ url_for('credit.index') }}">Evaluate another application</a></p>
-  </section>
+    <p class="text-muted small">The current model is a placeholder trained on synthetic data.</p>
+    <a href="{{ url_for('credit.index') }}" class="btn btn-primary">Evaluate Another Application</a>
+  </div>
+</div>
 {% endblock %}

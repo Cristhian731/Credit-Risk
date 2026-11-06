@@ -38,9 +38,11 @@ Keep commits small: one logical change per commit.
 
 ## Contracts
 
-`app/models.py` and `app/auth/services.py` are shared contracts between team members.
-`tests/test_models_contract.py` and `tests/test_auth_contract.py` define when each
-contract is fulfilled.
+`app/models.py`, `app/services/repository.py`, `app/auth/services.py` and the login form in
+`templates/auth/_login_form.html` are shared contracts between team members.
+`tests/test_models_contract.py`, `tests/test_repository.py` and `tests/test_auth_contract.py`
+define when each contract is fulfilled. [docs/INTEGRATION.md](docs/INTEGRATION.md) lists the
+integration steps.
 
 **Do not rename functions, arguments, models, tables or fields of the contracts without
 asking the team first.** Other parts of the app already depend on those names. If a change

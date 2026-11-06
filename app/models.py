@@ -17,10 +17,16 @@ without its ``xfail`` marker.
 # Allowed values for Category.type and Transaction.type.
 TRANSACTION_TYPES = ("income", "expense")
 
+# Allowed values for CreditApplication text columns. They match the option
+# values of the credit form and the encodings in ml/features.py.
+EMPLOYMENT_STATUSES = ("employed", "self_employed", "retired", "unemployed")
+PAYMENT_HISTORIES = ("good", "fair", "poor")
+RISK_LABELS = ("Approved", "Medium Risk", "High Risk")
+
 
 # TODO(teammate A): inherit from db.Model and implement the fields below.
 class User:
-    """A registered person who owns categories, transactions and budgets.
+    """A registered person who owns finances, clients and credit applications.
 
     Table: ``users``
 
@@ -36,6 +42,8 @@ class User:
         categories (list[Category]): back_populates="user".
         transactions (list[Transaction]): back_populates="user".
         budgets (list[Budget]): back_populates="user".
+        clients (list[Client]): back_populates="user".
+        credit_applications (list[CreditApplication]): back_populates="user".
     """
 
     __tablename__ = "users"
@@ -105,3 +113,62 @@ class Budget:
     """
 
     __tablename__ = "budgets"
+
+
+# TODO(teammate A): inherit from db.Model and implement the fields below.
+class Client:
+    """A customer whose loan applications are evaluated.
+
+    Table: ``clients``
+
+    Columns:
+        id (Integer): primary key.
+        full_name (String(120)): required.
+        document_number (String(30)): required, unique. National ID or similar.
+        user_id (Integer): required, foreign key to ``users.id``; the user who
+            registered the client.
+        created_at (DateTime): required, defaults to the current UTC time.
+
+    Relationships:
+        user (User): back_populates="clients".
+        credit_applications (list[CreditApplication]): back_populates="client".
+    """
+
+    __tablename__ = "clients"
+
+
+# TODO(teammate A): inherit from db.Model and implement the fields below.
+class CreditApplication:
+    """One loan evaluation: the customer data at that moment and the prediction.
+
+    The feature columns use exactly the names of the credit form fields and of
+    ``ml.features.FEATURE_ORDER``.
+
+    Table: ``credit_applications``
+
+    Columns:
+        id (Integer): primary key.
+        age (Integer): required.
+        monthly_income (Numeric(14, 2)): required.
+        employment_status (String(20)): required, one of EMPLOYMENT_STATUSES.
+        years_employment (Float): required.
+        credit_score (Integer): required.
+        existing_debt (Numeric(14, 2)): required.
+        dti_ratio (Float): required, debt-to-income ratio in percent.
+        loan_amount (Numeric(14, 2)): required.
+        loan_term (Integer): required, in months.
+        previous_loans (Integer): required.
+        payment_history (String(10)): required, one of PAYMENT_HISTORIES.
+        risk_label (String(20)): required, one of RISK_LABELS.
+        risk_percent (Float): required, estimated default risk from 0 to 100.
+        client_id (Integer): required, foreign key to ``clients.id``.
+        user_id (Integer): required, foreign key to ``users.id``; the user who
+            ran the evaluation.
+        created_at (DateTime): required, defaults to the current UTC time.
+
+    Relationships:
+        client (Client): back_populates="credit_applications".
+        user (User): back_populates="credit_applications".
+    """
+
+    __tablename__ = "credit_applications"

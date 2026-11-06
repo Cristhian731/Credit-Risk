@@ -3,21 +3,36 @@
 {% block title %}Dashboard &middot; Credit Risk{% endblock %}
 
 {% block content %}
-  <h1>Dashboard</h1>
-  <p class="muted">Sample data shown until the database models are ready.</p>
+<div class="container py-4">
+  <h2 class="fw-bold mb-1">Dashboard</h2>
+  <p class="text-muted">Data is kept in memory until the database is ready.</p>
 
-  <div class="stats">
-    <section class="card">
-      <h2>Income</h2>
-      <p class="stat">{{ "{:,.2f}".format(summary.income) }}</p>
-    </section>
-    <section class="card">
-      <h2>Expenses</h2>
-      <p class="stat">{{ "{:,.2f}".format(summary.expense) }}</p>
-    </section>
-    <section class="card">
-      <h2>Balance</h2>
-      <p class="stat">{{ "{:,.2f}".format(summary.balance) }}</p>
-    </section>
+  <div class="row g-4">
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 p-4">
+        <h5 class="text-muted">Income</h5>
+        <p class="fs-3 fw-bold text-success mb-0">{{ "{:,.2f}".format(summary.income) }}</p>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 p-4">
+        <h5 class="text-muted">Expenses</h5>
+        <p class="fs-3 fw-bold text-danger mb-0">{{ "{:,.2f}".format(summary.expense) }}</p>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 p-4">
+        <h5 class="text-muted">Balance</h5>
+        <p class="fs-3 fw-bold mb-0">{{ "{:,.2f}".format(summary.balance) }}</p>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 p-4">
+        <h5 class="text-muted">Credit evaluations</h5>
+        <p class="fs-3 fw-bold mb-0">{{ evaluations }}</p>
+        <a href="{{ url_for('credit.index') }}" class="small">Evaluate a loan</a>
+      </div>
+    </div>
   </div>
+</div>
 {% endblock %}

@@ -10,7 +10,8 @@ import pytest
 from sqlalchemy import inspect
 
 from app.extensions import db
-from app.models import Budget, Category, Transaction, User
+from app.models import Budget, Category, Client, CreditApplication, Transaction, User
+from ml.features import FEATURE_ORDER
 
 # TODO(teammate A): delete this marker once the models are implemented.
 pytestmark = pytest.mark.xfail(reason="Pending teammate A: implement app/models.py", strict=False)
@@ -20,6 +21,8 @@ MODELS = {
     Category: "categories",
     Transaction: "transactions",
     Budget: "budgets",
+    Client: "clients",
+    CreditApplication: "credit_applications",
 }
 
 REQUIRED_COLUMNS = [
@@ -39,6 +42,16 @@ REQUIRED_COLUMNS = [
     (Budget, "month"),
     (Budget, "category_id"),
     (Budget, "user_id"),
+    (Client, "full_name"),
+    (Client, "document_number"),
+    (Client, "user_id"),
+    (Client, "created_at"),
+    *[(CreditApplication, name) for name in FEATURE_ORDER],
+    (CreditApplication, "risk_label"),
+    (CreditApplication, "risk_percent"),
+    (CreditApplication, "client_id"),
+    (CreditApplication, "user_id"),
+    (CreditApplication, "created_at"),
 ]
 
 FOREIGN_KEYS = [
@@ -47,6 +60,9 @@ FOREIGN_KEYS = [
     (Transaction, "category_id", "categories.id"),
     (Budget, "user_id", "users.id"),
     (Budget, "category_id", "categories.id"),
+    (Client, "user_id", "users.id"),
+    (CreditApplication, "client_id", "clients.id"),
+    (CreditApplication, "user_id", "users.id"),
 ]
 
 RELATIONSHIPS = [
@@ -60,6 +76,12 @@ RELATIONSHIPS = [
     (Transaction, "category", Category, False),
     (Budget, "user", User, False),
     (Budget, "category", Category, False),
+    (User, "clients", Client, True),
+    (User, "credit_applications", CreditApplication, True),
+    (Client, "user", User, False),
+    (Client, "credit_applications", CreditApplication, True),
+    (CreditApplication, "client", Client, False),
+    (CreditApplication, "user", User, False),
 ]
 
 
@@ -97,9 +119,16 @@ def test_transaction_description_is_optional():
     assert _columns(Transaction)["description"].nullable is True
 
 
-@pytest.mark.parametrize("column", ["username", "email"])
-def test_user_column_is_unique(column):
-    assert _columns(User)[column].unique is True
+@pytest.mark.parametrize("model, column", [(User, "username"), (User, "email"), (Client, "document_number")])
+def test_column_is_unique(model, column):
+    assert _columns(model)[column].unique is True
+
+
+def test_credit_application_uses_credit_form_field_names():
+    from app.credit.forms import CHOICE_FIELDS, NUMERIC_FIELDS
+
+    form_fields = set(NUMERIC_FIELDS) | set(CHOICE_FIELDS)
+    assert form_fields <= set(_columns(CreditApplication).keys())
 
 
 @pytest.mark.parametrize("model, column, target", FOREIGN_KEYS)
@@ -162,3 +191,32 @@ def test_transaction_requires_amount(app):
         db.session.add(Transaction(type="income", date=date(2026, 11, 1), user=user, category=category))
         db.session.commit()
     db.session.rollback()
+
+
+def test_credit_application_is_linked_to_client_and_user(app):
+    user, _category = _make_user_and_category()
+    client = Client(full_name="Laura Gomez", document_number="1012345678", user=user)
+    application = CreditApplication(
+        age=35,
+        monthly_income=Decimal("4000.00"),
+        employment_status="employed",
+        years_employment=8,
+        credit_score=760,
+        existing_debt=Decimal("2000.00"),
+        dti_ratio=15,
+        loan_amount=Decimal("10000.00"),
+        loan_term=36,
+        previous_loans=2,
+        payment_history="good",
+        risk_label="Approved",
+        risk_percent=3.3,
+        client=client,
+        user=user,
+    )
+    db.session.add_all([client, application])
+    db.session.commit()
+
+    assert client.credit_applications == [application]
+    assert user.clients == [client]
+    assert user.credit_applications == [application]
+    assert application.created_at is not None

@@ -2,13 +2,19 @@
 
 Authentication is done when every test here passes. It needs the models from
 teammate A. Then remove the ``pytestmark`` xfail line below so a regression
-fails the build. These tests always run with FAKE_AUTH disabled.
+fails the build. These tests always run with AUTH_ENABLED=True.
 """
 import pytest
 from flask import g, session
 from werkzeug.security import check_password_hash
 
-from app.auth.services import authenticate_user, login_required, logout_user, register_user
+from app.auth.services import (
+    authenticate_user,
+    get_current_user,
+    login_required,
+    logout_user,
+    register_user,
+)
 from app.extensions import db
 from app.models import User
 
@@ -17,6 +23,11 @@ pytestmark = pytest.mark.xfail(reason="Pending teammate B: implement app/auth/se
 
 EMAIL = "ana@example.com"
 PASSWORD = "correct-horse-battery"
+
+
+@pytest.fixture(autouse=True)
+def enable_auth(app):
+    app.config["AUTH_ENABLED"] = True
 
 
 @pytest.fixture
@@ -66,6 +77,19 @@ def test_authenticate_user_rejects_unknown_email(app, user):
         assert "user_id" not in session
 
 
+def test_authenticate_user_with_remember_makes_session_permanent(app, user):
+    with app.test_request_context():
+        assert authenticate_user(EMAIL, PASSWORD, remember=True) is user
+        assert session.permanent is True
+
+
+def test_get_current_user_returns_logged_in_user(app, user):
+    with app.test_request_context():
+        assert get_current_user() is None
+        authenticate_user(EMAIL, PASSWORD)
+        assert get_current_user() is user
+
+
 def test_logout_user_clears_session(app, user):
     with app.test_request_context():
         authenticate_user(EMAIL, PASSWORD)
@@ -98,3 +122,23 @@ def test_login_required_sets_current_user(app, user):
     with app.test_request_context():
         session["user_id"] = user.id
         assert view() is user
+
+
+def test_login_route_logs_in_with_form_fields(client, user):
+    response = client.post("/auth/login", data={"email": EMAIL, "password": PASSWORD, "remember": "on"})
+    assert response.status_code == 302
+    with client.session_transaction() as client_session:
+        assert client_session["user_id"] == user.id
+
+
+def test_login_route_rejects_invalid_credentials(client, user):
+    client.post("/auth/login", data={"email": EMAIL, "password": "wrong-password"})
+    with client.session_transaction() as client_session:
+        assert "user_id" not in client_session
+
+
+def test_logout_route_clears_session(client, user):
+    client.post("/auth/login", data={"email": EMAIL, "password": PASSWORD})
+    client.post("/auth/logout")
+    with client.session_transaction() as client_session:
+        assert "user_id" not in client_session

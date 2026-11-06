@@ -1,297 +1,41 @@
+/* Project colors on top of Bootstrap 5. */
 :root {
-  --color-primary: #1f6f5c;
-  --color-primary-dark: #154d40;
-  --color-text: #1d2433;
-  --color-muted: #5f6b7a;
-  --color-bg: #f5f7fa;
-  --color-surface: #ffffff;
-  --color-border: #dde3ea;
-  --radius: 8px;
+  --cr-navy: #0b2545;
+  --cr-blue: #13518a;
+  --cr-soft: #f3f6fa;
+  --cr-footer-text: #cfd8e3;
 }
 
-* {
-  box-sizing: border-box;
+html {
+  scroll-behavior: smooth;
 }
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: var(--color-text);
-  background: var(--color-bg);
-  line-height: 1.5;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+/* Keep anchored sections visible below the sticky navbar. */
+section[id],
+#login {
+  scroll-margin-top: 72px;
 }
 
-/* Navigation */
-.site-header {
-  background: var(--color-primary);
+.site-navbar {
+  background: var(--cr-navy);
 }
 
-.navbar {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  min-height: 60px;
-}
-
-.brand {
+.hero {
+  background: linear-gradient(135deg, var(--cr-navy), var(--cr-blue));
   color: #fff;
-  font-weight: 700;
-  font-size: 1.25rem;
-  text-decoration: none;
-}
-
-.nav-menu {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  gap: 4px;
-}
-
-.nav-menu a {
-  display: block;
-  padding: 8px 14px;
-  color: #e6f2ef;
-  text-decoration: none;
-  border-radius: var(--radius);
-}
-
-.nav-menu a:hover,
-.nav-menu a.active {
-  background: var(--color-primary-dark);
-  color: #fff;
-}
-
-.nav-toggle {
-  display: none;
-  background: none;
-  border: 0;
-  padding: 8px;
-  cursor: pointer;
-}
-
-.nav-toggle-bar {
-  display: block;
-  width: 24px;
-  height: 2px;
-  margin: 5px 0;
-  background: #fff;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-@media (max-width: 720px) {
-  .nav-toggle {
-    display: block;
-  }
-
-  .nav-menu {
-    display: none;
-    flex-direction: column;
-    width: 100%;
-    padding-bottom: 12px;
-  }
-
-  .nav-menu.is-open {
-    display: flex;
-  }
-}
-
-/* Layout */
-.container {
-  flex: 1;
-  width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 16px;
+  padding: 80px 0;
 }
 
 .card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.muted {
-  color: var(--color-muted);
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.stat {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.form fieldset {
   border: 0;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 12px;
-  max-width: 420px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-.form label {
-  display: grid;
-  gap: 4px;
-}
-
-.form input,
-.form select,
-.form button {
-  font: inherit;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-}
-
-.form button {
-  background: var(--color-primary);
-  color: #fff;
-  border: 0;
-  cursor: pointer;
-}
-
-/* Credit evaluation */
-.form .form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px 16px;
-}
-
-.form-actions {
-  text-align: right;
-}
-
-.button {
-  display: inline-block;
-  padding: 8px 16px;
-  background: var(--color-primary);
-  color: #fff;
-  border-radius: var(--radius);
-  text-decoration: none;
-}
-
-.result {
-  max-width: 720px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.result .flash {
-  text-align: left;
-}
-
-.badge {
-  display: inline-block;
-  padding: 6px 20px;
-  border-radius: 999px;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.meter {
-  height: 20px;
-  background: var(--color-border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.meter-bar {
-  height: 100%;
-}
-
-.badge-low,
-.meter-low {
-  background: #2e8b57;
-}
-
-.badge-medium,
-.meter-medium {
-  background: #d48a00;
-}
-
-.badge-high,
-.meter-high {
-  background: #c0392b;
-}
-
-.flash-low {
-  background: #e7f6ee;
-  border-color: #b5e0c7;
-}
-
-.flash-medium {
-  background: #fff5e0;
-  border-color: #f0d49a;
-}
-
-.flash-high {
-  background: #fdecec;
-  border-color: #f2b8b8;
-}
-
-.flash {
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  margin-bottom: 16px;
-  background: #e8f1ff;
-  border: 1px solid #b8d0f5;
-}
-
-.flash-danger {
-  background: #fdecec;
-  border-color: #f2b8b8;
-}
-
-.flash-success {
-  background: #e7f6ee;
-  border-color: #b5e0c7;
+.bg-soft {
+  background: var(--cr-soft);
 }
 
 .site-footer {
-  text-align: center;
-  color: var(--color-muted);
-  font-size: 0.875rem;
-  padding: 16px;
-  border-top: 1px solid var(--color-border);
+  background: var(--cr-navy);
+  color: var(--cr-footer-text);
 }

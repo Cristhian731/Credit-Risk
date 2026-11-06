@@ -66,3 +66,16 @@ def validate_form(form):
         clean[name] = encoding[raw]
 
     return clean, errors
+
+
+def to_record(values):
+    """Return validated values with the choice fields as text, ready to be saved.
+
+    The model receives numeric codes, but the stored application keeps the
+    readable values (e.g. "employed") used by the form and app/models.py.
+    """
+    record = dict(values)
+    for name in CHOICE_FIELDS:
+        codes = {code: text for text, code in CATEGORICAL_ENCODINGS[name].items()}
+        record[name] = codes[values[name]]
+    return record

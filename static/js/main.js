@@ -1,13 +1,15 @@
-// Toggle the navigation menu on small screens.
+// Close the collapsed mobile menu after following an in-page link.
 document.addEventListener("DOMContentLoaded", function () {
-  var toggle = document.querySelector(".nav-toggle");
-  var menu = document.getElementById("nav-menu");
-  if (!toggle || !menu) {
+  var menu = document.getElementById("main-nav");
+  if (!menu || !window.bootstrap) {
     return;
   }
 
-  toggle.addEventListener("click", function () {
-    var isOpen = menu.classList.toggle("is-open");
-    toggle.setAttribute("aria-expanded", String(isOpen));
+  menu.querySelectorAll("a.nav-link, a.btn").forEach(function (link) {
+    link.addEventListener("click", function () {
+      if (menu.classList.contains("show")) {
+        window.bootstrap.Collapse.getOrCreateInstance(menu).hide();
+      }
+    });
   });
 });

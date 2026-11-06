@@ -1,9 +1,10 @@
 """Credit evaluation routes: customer form and prediction result."""
 from flask import flash, redirect, render_template, request, session, url_for
 
-from ..auth.services import login_required
+from ..auth.services import get_current_user, login_required
+from ..services.repository import save_credit_application
 from . import bp
-from .forms import CHOICE_FIELDS, FIELD_ORDER, NUMERIC_FIELDS, validate_form
+from .forms import CHOICE_FIELDS, FIELD_ORDER, NUMERIC_FIELDS, to_record, validate_form
 from .services import get_predictor
 
 RESULT_SESSION_KEY = "credit_result"
@@ -22,7 +23,7 @@ def _render_form(form, status=200):
 @bp.route("/", methods=["GET", "POST"])
 @login_required
 def index():
-    """GET: show the customer form. POST: validate, predict and redirect to the result."""
+    """GET: show the customer form. POST: validate, predict, save and show the result."""
     if request.method == "GET":
         return _render_form({})
 
@@ -34,10 +35,21 @@ def index():
         return _render_form(request.form, 400)
 
     try:
-        session[RESULT_SESSION_KEY] = get_predictor().predict(values)
+        result = get_predictor().predict(values)
     except RuntimeError as exc:
         flash(str(exc), "danger")
         return _render_form(request.form, 503)
+
+    save_credit_application({
+        **to_record(values),
+        "risk_label": result["label"],
+        "risk_percent": result["risk_percent"],
+        # The form does not identify the client yet (see docs/INTEGRATION.md).
+        "client_id": None,
+        # INTEGRATION: user_id comes from authenticated user
+        "user_id": get_current_user().id,
+    })
+    session[RESULT_SESSION_KEY] = result
 
     # Post/Redirect/Get avoids duplicate submissions on page refresh.
     return redirect(url_for("credit.result"))

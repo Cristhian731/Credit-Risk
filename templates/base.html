@@ -1,55 +1,82 @@
 <!doctype html>
+<!-- Base layout: Bootstrap 5, navbar, flash messages and footer. Pages extend this. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Credit Risk{% endblock %}</title>
+  <title>{% block title %}Credit Risk and Loan Viability Prediction Platform{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
-<body>
-  {% set nav_items = [
-    ('main.index', 'Home'),
+<body class="d-flex flex-column min-vh-100">
+  {% set section_links = [
+    ('problem', 'The Problem'),
+    ('objective', 'Objective'),
+    ('how-it-works', 'How It Works'),
+    ('technologies', 'Technologies'),
+  ] %}
+  {% set app_links = [
     ('transactions.index', 'Transactions'),
     ('dashboard.index', 'Dashboard'),
     ('credit.index', 'Credit Evaluation'),
-    ('auth.login', 'Login'),
   ] %}
-  <header class="site-header">
-    <nav class="navbar" aria-label="Main navigation">
-      <a class="brand" href="{{ url_for('main.index') }}">Credit Risk</a>
-      <button class="nav-toggle" type="button" aria-controls="nav-menu" aria-expanded="false">
-        <span class="visually-hidden">Toggle navigation</span>
-        <span class="nav-toggle-bar"></span>
-        <span class="nav-toggle-bar"></span>
-        <span class="nav-toggle-bar"></span>
+  <nav class="navbar navbar-expand-lg navbar-dark sticky-top site-navbar">
+    <div class="container">
+      <a class="navbar-brand fw-semibold" href="{{ url_for('main.index') }}">Credit Risk</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav"
+              aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
       </button>
-      <ul class="nav-menu" id="nav-menu">
-        {% for endpoint, label in nav_items %}
-          <li>
-            <a href="{{ url_for(endpoint) }}"
-               {% if request.endpoint and request.endpoint.split('.')[0] == endpoint.split('.')[0] %}class="active" aria-current="page"{% endif %}>
-              {{ label }}
-            </a>
+      <div class="collapse navbar-collapse" id="main-nav">
+        <ul class="navbar-nav ms-auto align-items-lg-center">
+          {% for anchor, label in section_links %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('main.index', _anchor=anchor) }}">{{ label }}</a>
+            </li>
+          {% endfor %}
+          {% if current_user %}
+            {% for endpoint, label in app_links %}
+              <li class="nav-item">
+                <a class="nav-link {% if request.blueprint == endpoint.split('.')[0] %}active{% endif %}"
+                   href="{{ url_for(endpoint) }}">{{ label }}</a>
+              </li>
+            {% endfor %}
+          {% endif %}
+          <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+            {% if auth_enabled and current_user %}
+              <form method="post" action="{{ url_for('auth.logout') }}">
+                <button type="submit" class="btn btn-outline-light btn-sm">Log out</button>
+              </form>
+            {% else %}
+              <a class="btn btn-warning btn-sm fw-semibold" href="{{ url_for('main.index', _anchor='login') }}">Log in</a>
+            {% endif %}
           </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-grow-1">
+    <div class="container mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
         {% endfor %}
-      </ul>
-    </nav>
-  </header>
-
-  <main class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endwith %}
-
+      {% endwith %}
+    </div>
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer">
-    <p>Credit Risk &middot; Personal finance and credit viability</p>
+  <footer class="py-4 text-center site-footer">
+    <p class="mb-1 fw-semibold">University Project</p>
+    <p class="mb-1">Machine Learning for Credit Risk &amp; Default Prediction</p>
+    <p class="mb-0">2026</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

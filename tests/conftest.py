@@ -3,6 +3,7 @@ import pytest
 
 from app import create_app
 from app.extensions import db
+from app.services import repository
 
 
 @pytest.fixture
@@ -21,3 +22,11 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture(autouse=True)
+def empty_repository():
+    """Start every test with no stored transactions or credit applications."""
+    repository.reset(seed=False)
+    yield
+    repository.reset(seed=False)

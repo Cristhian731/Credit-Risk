@@ -3,24 +3,44 @@
 {% block title %}New transaction &middot; Credit Risk{% endblock %}
 
 {% block content %}
-  <section class="card">
-    <h1>New transaction</h1>
-    <p class="muted">Saving will be enabled once the database models are ready.</p>
+<div class="container py-4" style="max-width: 720px">
+  <div class="card p-4">
+    <h2 class="fw-bold mb-1">New transaction</h2>
+    <p class="text-muted">Record an income or an expense.</p>
 
-    <form class="form">
-      <fieldset disabled>
-        <label>Type
-          <select name="type">
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-          </select>
-        </label>
-        <label>Amount <input type="number" name="amount" min="0" step="0.01"></label>
-        <label>Date <input type="date" name="date"></label>
-        <label>Category <input type="text" name="category"></label>
-        <label>Description <input type="text" name="description"></label>
-        <button type="submit">Save</button>
-      </fieldset>
+    <form method="post" action="{{ url_for('transactions.new') }}" class="row g-3">
+      <div class="col-md-6">
+        <label for="type" class="form-label">Type</label>
+        <select id="type" name="type" class="form-select" required>
+          {% for value, text in [('income', 'Income'), ('expense', 'Expense')] %}
+            <option value="{{ value }}" {% if form.get('type') == value %}selected{% endif %}>{{ text }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="amount" class="form-label">Amount</label>
+        <input id="amount" type="number" name="amount" min="0.01" step="0.01" class="form-control"
+               value="{{ form.get('amount', '') }}" required>
+      </div>
+      <div class="col-md-6">
+        <label for="date" class="form-label">Date</label>
+        <input id="date" type="date" name="date" class="form-control" value="{{ form.get('date', '') }}" required>
+      </div>
+      <div class="col-md-6">
+        <label for="category" class="form-label">Category</label>
+        <input id="category" type="text" name="category" maxlength="50" class="form-control"
+               value="{{ form.get('category', '') }}" required>
+      </div>
+      <div class="col-12">
+        <label for="description" class="form-label">Description</label>
+        <input id="description" type="text" name="description" maxlength="255" class="form-control"
+               value="{{ form.get('description', '') }}">
+      </div>
+      <div class="col-12 d-flex justify-content-between">
+        <a href="{{ url_for('transactions.index') }}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary px-4">Save</button>
+      </div>
     </form>
-  </section>
+  </div>
+</div>
 {% endblock %}

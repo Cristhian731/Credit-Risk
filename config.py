@@ -4,9 +4,42 @@ import os
 from ml.features import MODEL_PATH, SCALER_PATH
 
 
+LOCAL_DATABASE_URL = "sqlite:///credit_risk.db"
+
+# Plain scheme -> SQLAlchemy scheme with the driver listed in requirements.txt.
+_DATABASE_DRIVERS = {
+    "postgres://": "postgresql+psycopg://",
+    "postgresql://": "postgresql+psycopg://",
+    "mysql://": "mysql+pymysql://",
+}
+
+
 def _env_flag(name, default):
     """Read a boolean environment variable ("true"/"false")."""
     return os.environ.get(name, str(default)).strip().lower() == "true"
+
+
+def normalize_database_url(url):
+    """Add the installed driver to plain PostgreSQL and MySQL URLs.
+
+    ``postgres://`` and ``postgresql://`` use psycopg, ``mysql://`` uses PyMySQL.
+    URLs that already name a driver, and SQLite URLs, are returned unchanged.
+    """
+    for prefix, replacement in _DATABASE_DRIVERS.items():
+        if url.startswith(prefix):
+            return replacement + url[len(prefix):]
+    return url
+
+
+def database_url():
+    """Return the database URL from DATABASE_URL, or a local SQLite file.
+
+    Credentials belong in the environment variable, never in the code:
+        postgresql://user:password@host:5432/credit_risk
+        mysql://user:password@host:3306/credit_risk
+    """
+    url = os.environ.get("DATABASE_URL", "").strip()
+    return normalize_database_url(url) if url else LOCAL_DATABASE_URL
 
 
 class Config:
@@ -17,12 +50,13 @@ class Config:
     TESTING = False
 
     # Relative SQLite paths are stored in the Flask instance/ folder.
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///credit_risk.db")
+    SQLALCHEMY_DATABASE_URI = database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # When True, app/auth/services.py answers with a fake user so the rest of
-    # the app can be built before real authentication exists.
-    FAKE_AUTH = _env_flag("FAKE_AUTH", False)
+    # Authentication switch (see app/auth/services.py and README.md).
+    # False: login_required lets every request through and get_current_user()
+    # returns a demo user (id=1). True: the real authentication is used.
+    AUTH_ENABLED = _env_flag("AUTH_ENABLED", False)
 
     # Credit viability model saved by the ml/ package.
     CREDIT_MODEL_PATH = os.environ.get("CREDIT_MODEL_PATH", MODEL_PATH)
@@ -36,20 +70,18 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
-    FAKE_AUTH = _env_flag("FAKE_AUTH", True)
 
 
 class TestingConfig(Config):
     TESTING = True
     SECRET_KEY = "test-only-insecure-key"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    FAKE_AUTH = False
+    AUTH_ENABLED = False
 
 
 class ProductionConfig(Config):
     DEBUG = False
     # SECRET_KEY must come from the environment; create_app() refuses to start without it.
-    FAKE_AUTH = False
 
 
 config_by_name = {

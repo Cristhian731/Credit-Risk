@@ -3,33 +3,36 @@
 {% block title %}Credit Evaluation &middot; Credit Risk{% endblock %}
 
 {% block content %}
-  <section class="card">
-    <h1>Credit Evaluation</h1>
-    <p class="muted">Complete all fields to evaluate the loan application.</p>
+<div class="container py-4">
+  <div class="card p-4">
+    <h2 class="fw-bold mb-1">Customer Information</h2>
+    <p class="text-muted">Complete all fields to evaluate the loan application.</p>
 
-    <form method="post" action="{{ url_for('credit.index') }}" class="form">
-      <div class="form-grid">
-        {% for name in field_order %}
+    <form method="post" action="{{ url_for('credit.index') }}" class="row g-3">
+      {% for name in field_order %}
+        <div class="col-md-4">
           {% if name in numeric_fields %}
             {% set label, _type, min, max, step = numeric_fields[name] %}
-            <label>{{ label }}
-              <input type="number" name="{{ name }}" min="{{ min }}" max="{{ max }}" step="{{ step }}"
-                     value="{{ form.get(name, '') }}" required>
-            </label>
+            <label for="{{ name }}" class="form-label">{{ label }}</label>
+            <input type="number" class="form-control" id="{{ name }}" name="{{ name }}"
+                   min="{{ min }}" max="{{ max }}" step="{{ step }}" value="{{ form.get(name, '') }}" required>
           {% else %}
             {% set label, options = choice_fields[name] %}
-            <label>{{ label }}
-              <select name="{{ name }}" required>
-                <option value="" disabled {% if not form.get(name) %}selected{% endif %}>Select...</option>
-                {% for value, text in options %}
-                  <option value="{{ value }}" {% if form.get(name) == value %}selected{% endif %}>{{ text }}</option>
-                {% endfor %}
-              </select>
-            </label>
+            <label for="{{ name }}" class="form-label">{{ label }}</label>
+            <select class="form-select" id="{{ name }}" name="{{ name }}" required>
+              <option value="" disabled {% if not form.get(name) %}selected{% endif %}>Select...</option>
+              {% for value, text in options %}
+                <option value="{{ value }}" {% if form.get(name) == value %}selected{% endif %}>{{ text }}</option>
+              {% endfor %}
+            </select>
           {% endif %}
-        {% endfor %}
+        </div>
+      {% endfor %}
+
+      <div class="col-12 text-end">
+        <button type="submit" class="btn btn-primary btn-lg px-5">Evaluate Application</button>
       </div>
-      <p class="form-actions"><button type="submit">Evaluate application</button></p>
     </form>
-  </section>
+  </div>
+</div>
 {% endblock %}

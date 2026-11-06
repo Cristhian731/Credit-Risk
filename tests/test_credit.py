@@ -3,6 +3,7 @@ import pytest
 
 from app.credit.forms import validate_form
 from app.credit.services import PredictionService
+from app.services import repository
 from ml.features import FEATURE_ORDER
 
 VALID_FORM = {
@@ -43,9 +44,8 @@ def _service_with_risk(risk):
 
 
 @pytest.fixture
-def credit_client(app):
-    app.config["FAKE_AUTH"] = True
-    return app.test_client()
+def credit_client(client):
+    return client
 
 
 # Form validation
@@ -147,3 +147,19 @@ def test_unavailable_model_returns_503(app, credit_client):
     response = credit_client.post("/credit/", data=VALID_FORM)
     assert response.status_code == 503
     assert "not available" in response.get_data(as_text=True)
+
+
+def test_evaluation_is_saved_for_the_current_user(credit_client):
+    credit_client.post("/credit/", data=VALID_FORM)
+
+    (saved,) = repository.list_credit_applications(1)
+    assert saved["user_id"] == 1
+    assert saved["employment_status"] == "employed"
+    assert saved["payment_history"] == "good"
+    assert saved["risk_label"] in ("Approved", "Medium Risk", "High Risk")
+    assert set(FEATURE_ORDER) <= set(saved)
+
+
+def test_invalid_submission_is_not_saved(credit_client):
+    credit_client.post("/credit/", data={**VALID_FORM, "credit_score": "900"})
+    assert repository.list_credit_applications(1) == []
