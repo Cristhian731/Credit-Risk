@@ -1,28 +1,16 @@
-"""Authentication service contract.
 
-TODO(teammate B): implement every function marked below. Keep the names,
-arguments, return values and exceptions exactly as documented; the routes
-already depend on them.
+"""Authentication services for Credit Risk."""
 
-Contract summary:
-    * Passwords are hashed with ``werkzeug.security.generate_password_hash``
-      and checked with ``check_password_hash``. Plain passwords are never stored.
-    * The logged-in user's id lives in ``session["user_id"]``.
-    * ``login_required`` stores the current user in ``flask.g.user``.
-
-The ``AUTH_ENABLED`` setting (config.py, environment variable of the same
-name) switches between two modes:
-    * ``False`` (default): authentication is off. ``login_required`` lets every
-      request through and ``get_current_user`` returns DEMO_USER (id=1), so the
-      rest of the app works before the real login exists.
-    * ``True``: the real implementation below is used.
-
-The contract is fulfilled when ``tests/test_auth_contract.py`` passes without
-its ``xfail`` marker.
-"""
 from functools import wraps
 
-from flask import current_app, g
+from flask import (
+    current_app,
+    g,
+    redirect,
+    request,
+    session,
+    url_for,
+)
 
 SESSION_USER_KEY = "user_id"
 
@@ -39,85 +27,122 @@ DEMO_USER = _DemoUser()
 
 
 def auth_enabled():
-    """Return True when the real authentication must be used."""
+    """Return True when real authentication must be used."""
     return bool(current_app.config.get("AUTH_ENABLED", False))
 
 
-# TODO(teammate B)
 def register_user(username, email, password):
-    """Create and persist a new user with a hashed password.
+    """Create and persist a new user with a hashed password."""
 
-    Args:
-        username: Unique display name.
-        email: Unique email address, used to log in.
-        password: Plain-text password; only its hash is stored.
+    from sqlalchemy.exc import IntegrityError
 
-    Returns:
-        The new ``app.models.User``, already committed to the database.
+    from app.extensions import db
+    from app.models import User
 
-    Raises:
-        ValueError: If an argument is empty or the username or email is
-            already registered.
-    """
-    raise NotImplementedError("register_user is pending (teammate B).")
+    if (
+        not isinstance(username, str) or not username.strip()
+        or not isinstance(email, str) or not email.strip()
+        or not isinstance(password, str) or not password.strip()
+    ):
+        raise ValueError("Username, email and password are required.")
+
+    username = username.strip()
+    email = email.strip().lower()
+
+    existing_username = db.session.execute(
+        db.select(User).filter_by(username=username)
+    ).scalar_one_or_none()
+
+    existing_email = db.session.execute(
+        db.select(User).filter_by(email=email)
+    ).scalar_one_or_none()
+
+    if existing_username or existing_email:
+        raise ValueError("Username or email is already registered.")
+
+    user = User(
+        username=username,
+        email=email,
+    )
+    user.set_password(password)
+
+    db.session.add(user)
+
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        raise ValueError("Username or email is already registered.")
+
+    return user
 
 
-# TODO(teammate B)
 def authenticate_user(email, password, remember=False):
-    """Check the credentials and, if valid, log the user in.
+    """Validate credentials and create an authenticated session."""
 
-    Must be called inside a request context. On success the user's id is
-    stored in ``session["user_id"]``; with ``remember=True`` the session is
-    made permanent.
+    from app.extensions import db
+    from app.models import User
 
-    Args:
-        email: Value of the login form field ``email``.
-        password: Value of the login form field ``password``.
-        remember: True when the login form checkbox ``remember`` is ticked.
+    if not isinstance(email, str) or not isinstance(password, str):
+        return None
 
-    Returns:
-        The matching ``app.models.User``, or ``None`` if the email is unknown
-        or the password is wrong. The session is not modified on failure.
-    """
-    raise NotImplementedError("authenticate_user is pending (teammate B).")
+    email = email.strip().lower()
+
+    user = db.session.execute(
+        db.select(User).filter_by(email=email)
+    ).scalar_one_or_none()
+
+    if user is None or not user.check_password(password):
+        return None
+
+    session[SESSION_USER_KEY] = user.id
+    session.permanent = bool(remember)
+
+    return user
 
 
-# TODO(teammate B)
 def logout_user():
-    """Log the current user out by removing ``session["user_id"]``.
+    """Remove the authenticated user from the session."""
 
-    Must be called inside a request context. Calling it when nobody is
-    logged in is not an error.
-    """
-    raise NotImplementedError("logout_user is pending (teammate B).")
+    session.pop(SESSION_USER_KEY, None)
 
 
 def get_current_user():
-    """Return the logged-in user, or ``None`` if nobody is logged in.
+    """Return the logged-in user or None."""
 
-    With AUTH_ENABLED False it always returns DEMO_USER.
-    """
     if not auth_enabled():
         return DEMO_USER
-    # TODO(teammate B): load the user whose id is in session["user_id"].
-    raise NotImplementedError("get_current_user is pending (teammate B).")
+
+    from app.extensions import db
+    from app.models import User
+
+    user_id = session.get(SESSION_USER_KEY)
+
+    if user_id is None:
+        return None
+
+    return db.session.get(User, user_id)
 
 
 def login_required(view):
-    """Decorator that only lets logged-in users reach a view.
-
-    With AUTH_ENABLED False every request passes and ``g.user`` is DEMO_USER.
-    With AUTH_ENABLED True: if ``get_current_user()`` returns a user, it is
-    stored in ``g.user`` and the view runs; otherwise the response is a
-    redirect to ``url_for("auth.login", next=request.path)``.
-    """
+    """Protect a view from unauthenticated requests."""
 
     @wraps(view)
     def wrapped_view(*args, **kwargs):
+
         if not auth_enabled():
             g.user = DEMO_USER
             return view(*args, **kwargs)
-        # TODO(teammate B): redirect anonymous users to auth.login.
-        raise NotImplementedError("login_required is pending (teammate B).")
+
+        user = get_current_user()
+
+        if user is None:
+            return redirect(
+                url_for("auth.login", next=request.path)
+            )
+
+        g.user = user
+
+        return view(*args, **kwargs)
 
     return wrapped_view

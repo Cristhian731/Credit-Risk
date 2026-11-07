@@ -19,7 +19,7 @@ from app.extensions import db
 from app.models import User
 
 # TODO(teammate B): delete this marker once authentication is implemented.
-pytestmark = pytest.mark.xfail(reason="Pending teammate B: implement app/auth/services.py", strict=False)
+
 
 EMAIL = "ana@example.com"
 PASSWORD = "correct-horse-battery"

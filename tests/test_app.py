@@ -1,4 +1,6 @@
+
 """Tests for the application structure: factory, configuration and routes."""
+
 import pytest
 from flask import g
 
@@ -46,8 +48,16 @@ def test_page_responds_ok_with_auth_disabled(client, path):
 
 def test_base_layout_shows_navigation(client):
     html = client.get("/").get_data(as_text=True)
-    for anchor in ("problem", "objective", "how-it-works", "technologies", "login"):
+
+    for anchor in (
+        "problem",
+        "objective",
+        "how-it-works",
+        "technologies",
+        "login",
+    ):
         assert f'href="/#{anchor}"' in html
+
     for label in ("Transactions", "Dashboard", "Credit Evaluation", "Log in"):
         assert label in html
 
@@ -71,13 +81,3 @@ def test_login_required_passes_with_auth_disabled(app):
 
     with app.test_request_context():
         assert view() is services.DEMO_USER
-
-
-@pytest.mark.parametrize("path", ["/auth/login", "/auth/register", "/auth/logout"])
-@pytest.mark.parametrize("method", ["get", "post"])
-def test_auth_placeholders_flash_and_redirect_home(client, path, method):
-    """Placeholder behavior. TODO(teammate B): delete when the real auth routes exist."""
-    response = getattr(client, method)(path)
-    assert response.status_code == 302
-    assert response.headers["Location"] == "/"
-    assert "Login is not available yet." in client.get("/").get_data(as_text=True)
