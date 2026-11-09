@@ -1,19 +1,16 @@
 """Credit evaluation routes: customer form and prediction result."""
-from flask import abort, flash, redirect, render_template, request, session, url_for
+from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
 from ..auth.services import get_current_user, login_required
 from ..services.repository import (
     delete_credit_application,
     get_credit_application,
-    list_credit_applications,
+    paginate_credit_applications,
     save_credit_application,
 )
 from . import bp
 from .forms import CHOICE_FIELDS, FIELD_ORDER, NUMERIC_FIELDS, to_record, validate_client, validate_form
-from .services import get_predictor
-
-RESULT_SESSION_KEY = "credit_result"
-HISTORY_LIMIT = 100
+from .services import RECOMMENDATIONS, get_predictor
 
 
 def _render_form(form, status=200):
@@ -48,29 +45,27 @@ def index():
         flash(str(exc), "danger")
         return _render_form(request.form, 503)
 
-    save_credit_application({
+    saved = save_credit_application({
         **to_record(values),
         **client,
         "risk_label": result["label"],
         "risk_percent": result["risk_percent"],
         "user_id": get_current_user().id,
     })
-    session[RESULT_SESSION_KEY] = result
-
-    # Post/Redirect/Get avoids duplicate submissions on page refresh.
-    return redirect(url_for("credit.result"))
+    # Post/Redirect/Get: reloading the result page never submits the form again.
+    return redirect(url_for("credit.result", application_id=saved["id"]))
 
 
 @bp.route("/history")
 @login_required
 def history():
-    """List the current user's past evaluations, newest first."""
-    user = get_current_user()
-    return render_template(
-        "credit/history.html",
-        applications=list_credit_applications(user.id, limit=HISTORY_LIMIT),
-        limit=HISTORY_LIMIT,
+    """List the current user's past evaluations, newest first, one page (?page=N) at a time."""
+    page = paginate_credit_applications(
+        get_current_user().id,
+        request.args.get("page", 1, type=int),
+        current_app.config["PAGE_SIZE"],
     )
+    return render_template("credit/history.html", applications=page["items"], pagination=page)
 
 
 @bp.route("/history/<int:application_id>/delete", methods=["GET", "POST"])
@@ -107,10 +102,25 @@ def delete(application_id):
 
 @bp.route("/result")
 @login_required
-def result():
-    """Show the last prediction stored in the session."""
-    data = session.get(RESULT_SESSION_KEY)
-    if data is None:
-        flash("Please submit the form first.", "info")
-        return redirect(url_for("credit.index"))
-    return render_template("credit/result.html", result=data)
+def result_without_id():
+    """Old address without an id: the results now live in the history."""
+    return redirect(url_for("credit.history"))
+
+
+@bp.route("/result/<int:application_id>")
+@login_required
+def result(application_id):
+    """Show a saved evaluation, loaded from the database by id and owner.
+
+    Someone else's or a deleted evaluation answers 404. The recommendation is
+    derived from the stored label when the page is read, not stored.
+    """
+    application = get_credit_application(get_current_user().id, application_id)
+    if application is None:
+        abort(404)
+    result = {
+        "label": application["risk_label"],
+        "risk_percent": application["risk_percent"],
+        "recommendation": RECOMMENDATIONS[application["risk_label"]],
+    }
+    return render_template("credit/result.html", result=result, application=application)

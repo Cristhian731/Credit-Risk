@@ -1,4 +1,6 @@
 """Tests for the Alembic migrations: they build the schema the models describe."""
+import re
+
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
@@ -103,3 +105,43 @@ def test_0002_downgrade_removes_the_rule_and_keeps_the_data(migrated_app):
     db.session.commit()
     assert db.session.execute(text("SELECT COUNT(*) FROM categories")).scalar() == 2
     assert db.session.execute(text("SELECT COUNT(*) FROM users")).scalar() == 1
+
+
+def _documented_sql():
+    """The detection query and the fix statements from docs/MIGRATIONS.md, as written there."""
+    from pathlib import Path
+
+    doc = (Path(__file__).resolve().parent.parent / "docs" / "MIGRATIONS.md").read_text(encoding="utf-8")
+    section = doc.split("### 0002 fails if a user has duplicate categories", 1)[1].split("## Notes", 1)[0]
+    detect, fix = re.findall(r"```sql\n(.*?)```", section, re.DOTALL)
+    return detect, [statement.strip() for statement in fix.split(";") if statement.strip()]
+
+
+def test_the_documented_fix_lets_0002_run_on_duplicate_categories(migrated_app):
+    upgrade(revision="0001")
+    db.session.execute(text("INSERT INTO users (id, username, email, password_hash, created_at) VALUES (1, 'ana', 'ana@example.com', 'x', '2026-11-08'), (2, 'luis', 'luis@example.com', 'x', '2026-11-08')"))
+    db.session.execute(text("INSERT INTO categories (id, name, type, user_id) VALUES (1, 'Food', 'expense', 1), (2, 'Food', 'expense', 1), (3, 'Food', 'expense', 2), (4, 'Food', 'income', 1)"))
+    db.session.execute(text("INSERT INTO transactions (type, amount, date, category_id, user_id) VALUES ('expense', 5, '2026-11-01', 2, 1), ('expense', 7, '2026-11-02', 1, 1)"))
+    db.session.execute(text("INSERT INTO budgets (amount, month, category_id, user_id) VALUES (100, '2026-11-01', 2, 1)"))
+    db.session.commit()
+
+    detect, fix = _documented_sql()
+    assert db.session.execute(text(detect)).fetchall() == [(1, "expense", "Food", 2)]
+    for statement in fix:
+        db.session.execute(text(statement))
+    db.session.commit()
+    assert db.session.execute(text(detect)).fetchall() == []
+
+    upgrade(revision="0002")
+    assert db.session.execute(text("SELECT id FROM categories ORDER BY id")).scalars().all() == [1, 3, 4]
+    assert db.session.execute(text("SELECT DISTINCT category_id FROM transactions")).scalars().all() == [1]
+    assert db.session.execute(text("SELECT category_id FROM budgets")).scalar() == 1
+
+
+def test_0002_stops_on_duplicate_categories_as_documented(migrated_app):
+    upgrade(revision="0001")
+    _insert_user_and_category()
+    db.session.execute(text("INSERT INTO categories (name, type, user_id) VALUES ('Food', 'expense', 1)"))
+    db.session.commit()
+    with pytest.raises(IntegrityError):
+        upgrade(revision="0002")

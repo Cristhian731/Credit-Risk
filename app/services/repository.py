@@ -22,6 +22,8 @@ Contract:
 Each ``save_*``, ``update_*`` and ``delete_*`` function commits; if anything fails the session is rolled back
 and the error is raised again.
 """
+from decimal import Decimal
+
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
@@ -285,3 +287,69 @@ def delete_credit_application(user_id, application_id):
     except Exception:
         db.session.rollback()
         raise
+
+
+def _paginate(rows_query, count_query, page, per_page, to_dict):
+    """One page of results, cut by the database (LIMIT/OFFSET), never in Python.
+
+    ``page`` is clamped: anything below 1 or not an integer becomes 1, and a
+    page past the end becomes the last page. An empty list has one empty page.
+    """
+    total = db.session.execute(count_query).scalar_one()
+    pages = max(1, -(-total // per_page))
+    page = page if isinstance(page, int) and not isinstance(page, bool) else 1
+    page = min(max(page, 1), pages)
+    rows = db.session.execute(rows_query.limit(per_page).offset((page - 1) * per_page)).scalars()
+    return {
+        "items": [to_dict(row) for row in rows],
+        "page": page,
+        "pages": pages,
+        "total": total,
+        "per_page": per_page,
+    }
+
+
+def paginate_transactions(user_id, page, per_page):
+    """One page of the user's transactions, in the same order as ``list_transactions``.
+
+    Returns:
+        A dict with ``items`` (plain dicts), ``page``, ``pages``, ``total`` and ``per_page``.
+    """
+    return _paginate(
+        db.select(Transaction)
+        .options(joinedload(Transaction.category))
+        .where(Transaction.user_id == user_id)
+        .order_by(Transaction.date.desc(), Transaction.id.desc()),
+        db.select(func.count(Transaction.id)).where(Transaction.user_id == user_id),
+        page, per_page, _transaction_dict,
+    )
+
+
+def paginate_credit_applications(user_id, page, per_page):
+    """One page of the user's evaluations, newest first. Same shape as ``paginate_transactions``."""
+    return _paginate(
+        db.select(CreditApplication)
+        .options(joinedload(CreditApplication.client))
+        .where(CreditApplication.user_id == user_id)
+        .order_by(CreditApplication.id.desc()),
+        db.select(func.count(CreditApplication.id)).where(CreditApplication.user_id == user_id),
+        page, per_page, _application_dict,
+    )
+
+
+def transaction_totals(user_id):
+    """Income, expense and balance over ALL the user's transactions, summed by the database.
+
+    Nothing is stored: the totals are calculated every time they are read.
+    """
+    sums = dict(
+        db.session.execute(
+            db.select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
+            .where(Transaction.user_id == user_id)
+            .group_by(Transaction.type)
+        ).all()
+    )
+    cents = Decimal("0.01")
+    income = Decimal(str(sums.get("income", 0))).quantize(cents)
+    expense = Decimal(str(sums.get("expense", 0))).quantize(cents)
+    return {"income": income, "expense": expense, "balance": income - expense}

@@ -16,6 +16,13 @@ def app():
         yield application
         db.session.remove()
         db.drop_all()
+        # Each test app has its own connection pool. Close it, or the connections stay
+        # open until garbage collection and PostgreSQL runs out of clients mid-suite.
+        # (In-memory SQLite uses a StaticPool, which shares one connection and has no count.)
+        pool = db.engine.pool
+        if hasattr(pool, "checkedout"):
+            assert pool.checkedout() == 0, "a test left a database connection in use"
+        db.engine.dispose()
 
 
 @pytest.fixture

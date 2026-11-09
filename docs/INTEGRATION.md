@@ -1,98 +1,105 @@
-# Integration checklist
+# Architecture and integration guide
 
-How to plug the real database (teammate A) and the real login (teammate B) into the app
-without rewriting the routes. The routes already call stable functions; each teammate only
-replaces the bodies of those functions.
+How the pieces of the app fit together, the contracts between them, and how to deploy.
+The database and the login are integrated; this guide is the reference for changing them
+without breaking the rest of the app.
 
-## Integration order
+## Layers
 
-1. **Database first** (teammate A).
-2. **Login second** (teammate B). It needs the `User` model.
-3. **Turn authentication on last**: set `AUTH_ENABLED=True`.
+```
+templates/  <-  routes (app/<blueprint>/routes.py)  ->  app/services/repository.py  ->  app/models.py
+                      |                                                                    |
+                      +-- app/auth/services.py (current user, login_required)              +-- migrations/
+```
 
-Merge each step into `develop` through its own pull request, and only when the tests listed
-for that step pass.
+Rules:
 
-## Step 1 - Database (teammate A)
+- Routes never query the database directly: they call `app/services/repository.py`, which
+  returns plain dicts (never SQLAlchemy objects).
+- Every repository function that reads or changes a record takes the `user_id` first and only
+  touches that user's records. Another user's id behaves like a missing one, so routes answer
+  **404** for both (never 403).
+- Nothing calculable is stored: dashboard totals are summed by the database on every read.
+- Every POST form carries a CSRF token. Deleting is always a POST behind a confirmation page.
+- The schema only changes through migrations (`docs/MIGRATIONS.md`).
 
-**Files to change**
+## Contracts
 
-- [ ] `app/models.py`: turn the templates `User`, `Category`, `Transaction`, `Budget`, `Client`
-      and `CreditApplication` into Flask-SQLAlchemy models. Keep every class, table, column and
-      relationship name exactly as documented.
-- [ ] `app/services/repository.py`: replace the in-memory bodies of `save_transaction`,
-      `list_transactions`, `save_credit_application` and `list_credit_applications` with
-      database queries. Keep the signatures and keep returning plain dicts with the model column
-      names plus `id`. Remove `reset()`, the demo records and the in-memory lists, and the
-      `empty_repository` fixture in `tests/conftest.py` (replace it with a database cleanup if
-      needed).
-- [ ] Create the tables (for example with Flask-Migrate or a `flask` CLI command). Never call
-      `db.create_all()` at import time.
+### Repository (`app/services/repository.py`)
 
-**Tests that must pass before merging**
+| Function | Returns |
+|---|---|
+| `save_transaction(data)` | the saved transaction; the category (text) is created on first use, per user and type |
+| `list_transactions(user_id)` | all the user's transactions, newest date first |
+| `paginate_transactions(user_id, page, per_page)` | one page: `items`, `page`, `pages`, `total`, `per_page` |
+| `get_transaction(user_id, id)` / `update_transaction(user_id, id, data)` | the record, or `None` if it is not the user's |
+| `delete_transaction(user_id, id)` | `True`, or `False` if it is not the user's; the category is kept |
+| `transaction_totals(user_id)` | `income`, `expense`, `balance` over all the user's transactions |
+| `save_credit_application(data)` | the saved evaluation; `data` carries `client_full_name` and `client_document` (the client is found by document within the user, or created) |
+| `list_credit_applications(user_id, limit=None)` / `paginate_credit_applications(...)` | evaluations, newest first |
+| `get_credit_application(user_id, id)` / `delete_credit_application(user_id, id)` | as for transactions; evaluations are never edited; the client is kept |
+| `count_credit_applications(user_id)` | the number of evaluations |
 
-- [ ] `pytest tests/test_models_contract.py`, then delete its `pytestmark = pytest.mark.xfail(...)`.
-- [ ] `pytest tests/test_repository.py tests/test_transactions.py tests/test_credit.py`
-      (they use only the repository functions, so they must still pass with the database).
-- [ ] `pytest` (whole suite) with no new failures.
+Pages are cut by the database (`LIMIT`/`OFFSET`); an invalid page becomes 1 and a page past the
+end becomes the last one.
 
-## Step 2 - Login (teammate B)
+### Authentication (`app/auth/services.py`)
 
-**Files to change**
+- `register_user`, `authenticate_user`, `logout_user`, `get_current_user`, `login_required`.
+- The logged-in user's id lives in `session["user_id"]`. Passwords are hashed with werkzeug and
+  need at least 8 characters. The demo email is reserved.
+- With `AUTH_ENABLED=False` every request runs as the persisted demo user
+  (`get_demo_user()`, created by `flask --app run seed-demo`). Without it, protected pages
+  answer 503 with that instruction.
 
-- [ ] `app/auth/services.py`: implement `register_user`, `authenticate_user`, `logout_user`,
-      `get_current_user` and the `AUTH_ENABLED=True` branch of `login_required`. Hash passwords
-      with werkzeug; store the user id in `session["user_id"]`.
-- [ ] `app/auth/routes.py`: replace the placeholders `auth.login`, `auth.register` and
-      `auth.logout`.
-      - `auth.login` reads the form fields `email`, `password` and `remember` from
-        `templates/auth/_login_form.html` (do not change that card's design or field names).
-      - `auth.register` serves the "Create an account" link.
-- [ ] Delete the placeholder tests that expect "Login is not available yet.":
-      `test_auth_placeholders_flash_and_redirect_home` in `tests/test_app.py` and
-      `test_submitting_login_shows_not_available_message` in `tests/test_home.py`.
+### Models (`app/models.py`)
 
-**Tests that must pass before merging**
+`User`, `Category`, `Transaction`, `Budget`, `Client`, `CreditApplication`. Unique rules:
+`users.username`, `users.email`, `clients (user_id, document_number)` and
+`categories (user_id, type, name)`. A model change needs a migration; a test fails otherwise.
 
-- [ ] `pytest tests/test_auth_contract.py`, then delete its `pytestmark = pytest.mark.xfail(...)`.
-- [ ] `pytest tests/test_home.py` (the login form contract).
-- [ ] `pytest` (whole suite) with no new failures.
+## Commands
 
-## Step 3 - Turn authentication on
+| Command | Purpose |
+|---|---|
+| `flask --app run db upgrade` | Create or update the schema |
+| `flask --app run seed-demo` | Create the demo user and sample transactions (safe to run again) |
+| `flask --app run adopt-legacy-db OLD NEW` | Move a database created before migrations existed |
 
-- [ ] Set `AUTH_ENABLED=True` locally and check: anonymous users are redirected to the login
-      from `/transactions/`, `/dashboard/` and `/credit/`; after logging in, the pages work and the
-      records saved carry the real user's id.
-- [ ] Look for the `# INTEGRATION: user_id comes from authenticated user` markers
-      (`app/transactions/routes.py`, `app/credit/routes.py`) and confirm they receive the real user.
-- [ ] Set `AUTH_ENABLED=True` in Render.
+## Tests and CI
 
-## Pending decision: client identification
+- `pytest` runs everything on in-memory SQLite. `TEST_DATABASE_URL` runs the same suite on
+  another database (CI uses PostgreSQL); use an empty database, the tests create and drop tables.
+- `tests/test_e2e.py` walks the whole journey with authentication and CSRF on and an app restart.
+- CI (`.github/workflows/tests.yml`) has two jobs, SQLite and PostgreSQL 17. Both run
+  `flask db upgrade` on an empty database, check the head revision, downgrade to `base`, upgrade
+  again, and then run the whole suite.
 
-`CreditApplication.client_id` is required, but the credit form does not identify the client
-yet, so the route saves `client_id=None`. Before step 1 is merged, the team must agree on how
-to capture the client (proposed: add `full_name` and `document_number` to the credit form,
-using the `Client` column names, and a repository function that finds or creates the client).
-
-## Render configuration
+## Deploying on Render
 
 Set these environment variables in the Render dashboard (**Environment** tab). Never commit
 their values.
 
-| Variable | Value |
+| Variable | Required | Value |
+|---|---|---|
+| `SECRET_KEY` | **Yes** | A long random string, e.g. `python -c "import secrets; print(secrets.token_hex(32))"`. The app refuses to start without it. |
+| `DATABASE_URL` | **Yes** | The Render PostgreSQL **Internal Database URL**, e.g. `postgresql://user:password@host:5432/credit_risk`. Plain URLs are mapped to the installed drivers (psycopg, PyMySQL). Without it the app would use a SQLite file that Render erases. |
+| `AUTH_ENABLED` | **Yes** | `true`. It is already the production default; setting it explicitly documents the intent. `false` is demo mode and must never hold real data. |
+| `FLASK_CONFIG` | **Yes** | `production` |
+| `PYTHON_VERSION` | Recommended | A **full** version of the 3.14 line that CI uses, e.g. `3.14.10` (Render rejects `3.14` here; it needs major.minor.patch). Without it, new Render services already default to 3.14. |
+
+Commands (free plan, which has no Pre-Deploy Command):
+
+| Setting | Value |
 |---|---|
-| `DATABASE_URL` | Connection URL of the database, e.g. `postgresql://user:password@host:5432/credit_risk` or `mysql://user:password@host:3306/credit_risk`. Plain URLs are mapped to the installed drivers (psycopg, PyMySQL). |
-| `SECRET_KEY` | A long random string, e.g. the output of `python -c "import secrets; print(secrets.token_hex(32))"`. Required in production. |
-| `AUTH_ENABLED` | `False` until step 3 is done, then `True`. |
-| `FLASK_CONFIG` | `production` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `flask --app run db upgrade && gunicorn run:app` |
 
-Start command: `gunicorn run:app`
-
-**Notes**
-
-- Render only manages **PostgreSQL** databases directly. A MySQL database must come from an
-  external provider; only `DATABASE_URL` changes.
-- On Render's free plan the file system is not persistent: a local **SQLite** file is **erased on
-  every deploy** (and restart). Use PostgreSQL or an external MySQL for real data.
-- With `AUTH_ENABLED=False` every visitor acts as the demo user. Do not store real data in that
-  mode.
+The migrations run on every start and do nothing when the schema is already up to date. On a
+paid plan, `flask --app run db upgrade` can move to the Pre-Deploy Command and the start command
+becomes `gunicorn run:app`.
+- Production sends the session cookie only over HTTPS (`SESSION_COOKIE_SECURE`); Render serves
+  HTTPS, so nothing else is needed.
+- Render only manages **PostgreSQL** databases directly; a MySQL database must come from an
+  external provider. On the free plan the file system is not persistent, so a SQLite file is
+  erased on every deploy: use PostgreSQL for real data.

@@ -21,13 +21,25 @@ def test_development_config_enables_debug():
     assert app.debug is True
 
 
-def test_auth_is_enabled_by_default_in_development():
-    assert DevelopmentConfig.AUTH_ENABLED is True
+@pytest.mark.parametrize("config_class", [DevelopmentConfig, ProductionConfig])
+def test_auth_is_enabled_by_default_in_development_and_production(config_class):
+    assert config_class.AUTH_ENABLED is True
 
 
-@pytest.mark.parametrize("config_class", [TestingConfig, ProductionConfig])
-def test_auth_is_disabled_by_default_outside_development(config_class):
-    assert config_class.AUTH_ENABLED is False
+def test_auth_is_disabled_by_default_only_in_testing():
+    assert TestingConfig.AUTH_ENABLED is False
+
+
+def test_production_app_requires_login_without_any_setting(monkeypatch, tmp_path):
+    """A deploy that forgets AUTH_ENABLED gets the real login, not demo mode."""
+    monkeypatch.delenv("AUTH_ENABLED", raising=False)
+    monkeypatch.setattr(ProductionConfig, "SECRET_KEY", "from-environment")
+    monkeypatch.setattr(ProductionConfig, "SQLALCHEMY_DATABASE_URI", f"sqlite:///{tmp_path / 'prod.db'}")
+    application = create_app("production")
+    assert application.config["AUTH_ENABLED"] is True
+    response = application.test_client().get("/dashboard/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/auth/login")
 
 
 @pytest.mark.parametrize(

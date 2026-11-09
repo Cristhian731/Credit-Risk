@@ -121,12 +121,13 @@ def test_form_page_shows_every_field(credit_client):
         assert f'name="{name}"' in html
 
 
-def test_valid_submission_redirects_to_result(credit_client):
+def test_valid_submission_redirects_to_its_saved_result(credit_client, demo_user):
     response = credit_client.post("/credit/", data=VALID_FORM)
+    (saved,) = repository.list_credit_applications(demo_user.id)
     assert response.status_code == 302
-    assert response.headers["Location"].endswith("/credit/result")
+    assert response.headers["Location"] == f"/credit/result/{saved['id']}"
 
-    result = credit_client.get("/credit/result")
+    result = credit_client.get(response.headers["Location"])
     assert result.status_code == 200
     assert "Estimated default risk" in result.get_data(as_text=True)
 
@@ -139,10 +140,10 @@ def test_invalid_submission_keeps_form_data(credit_client):
     assert 'value="35"' in html
 
 
-def test_result_without_submission_redirects_to_form(credit_client):
+def test_old_result_address_without_id_redirects_to_the_history(credit_client):
     response = credit_client.get("/credit/result")
     assert response.status_code == 302
-    assert response.headers["Location"].endswith("/credit/")
+    assert response.headers["Location"] == "/credit/history"
 
 
 def test_unavailable_model_returns_503(app, credit_client):

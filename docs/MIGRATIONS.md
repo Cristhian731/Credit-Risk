@@ -47,9 +47,52 @@ looks right, keep the old file as a backup and rename the new one to `credit_ris
 - **Undo only the last change:** `flask --app run db downgrade`, then restore the code to the
   previous commit.
 
+## Revisions
+
+| Revision | Change |
+|---|---|
+| `0001` | Initial schema. `clients` is unique per `(user_id, document_number)`. |
+| `0002` | `categories` is unique per `(user_id, type, name)`. |
+
+### 0002 fails if a user has duplicate categories
+
+The upgrade adds a unique constraint, so it stops with an integrity error when the same user
+already has two categories with the same type and name (possible only in databases edited by
+hand: the app creates each category once). Find them before upgrading:
+
+```sql
+SELECT user_id, type, name, COUNT(*) AS copies
+FROM categories
+GROUP BY user_id, type, name
+HAVING COUNT(*) > 1;
+```
+
+To fix them, back up the database, point every row to the first copy and delete the others:
+
+```sql
+UPDATE transactions SET category_id = (
+    SELECT MIN(keep.id) FROM categories AS dup
+    JOIN categories AS keep
+      ON keep.user_id = dup.user_id AND keep.type = dup.type AND keep.name = dup.name
+    WHERE dup.id = transactions.category_id);
+UPDATE budgets SET category_id = (
+    SELECT MIN(keep.id) FROM categories AS dup
+    JOIN categories AS keep
+      ON keep.user_id = dup.user_id AND keep.type = dup.type AND keep.name = dup.name
+    WHERE dup.id = budgets.category_id);
+DELETE FROM categories
+WHERE id NOT IN (SELECT MIN(id) FROM categories GROUP BY user_id, type, name);
+```
+
+Then run `flask --app run db upgrade` again. `tests/test_migrations.py` runs these exact
+statements on a database with duplicates before upgrading.
+
 ## Notes
 
 - `migrations/env.py` is project code, not generated boilerplate: it keeps the app logger
-  enabled while migrations run and uses `db.engine` (the `get_engine()` helper is deprecated).
+  enabled while migrations run, uses `db.engine` (the `get_engine()` helper is deprecated) and
+  turns SQLite foreign keys **off while migrating** (batch operations rebuild tables) and back
+  on afterwards. Everywhere else the app turns them on for every SQLite connection
+  (`app/extensions.py`); PostgreSQL and MySQL always enforce them.
 - Constraint names follow the convention in `app/extensions.py`, which makes SQLite batch
   migrations reproducible.

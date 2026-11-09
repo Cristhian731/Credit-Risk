@@ -1,18 +1,9 @@
-"""Dashboard route: financial summary built from the repository."""
-from decimal import Decimal
-
+"""Dashboard route: financial summary calculated by the database on every read."""
 from flask import render_template
 
 from ..auth.services import get_current_user, login_required
-from ..services.repository import count_credit_applications, list_transactions
+from ..services.repository import count_credit_applications, transaction_totals
 from . import bp
-
-
-def summarize(transactions):
-    """Return total income, total expense and balance for a list of transactions."""
-    income = sum((t["amount"] for t in transactions if t["type"] == "income"), Decimal("0"))
-    expense = sum((t["amount"] for t in transactions if t["type"] == "expense"), Decimal("0"))
-    return {"income": income, "expense": expense, "balance": income - expense}
 
 
 @bp.route("/")
@@ -22,6 +13,6 @@ def index():
     user = get_current_user()
     return render_template(
         "dashboard/index.html",
-        summary=summarize(list_transactions(user.id)),
+        summary=transaction_totals(user.id),
         evaluations=count_credit_applications(user.id),
     )

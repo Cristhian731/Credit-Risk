@@ -59,8 +59,9 @@ def _credit_application(user_id, **overrides):
 
 
 def assert_no_orphan_rows():
-    """SQLite does not enforce foreign keys by default; this checks them explicitly."""
-    assert db.session.execute(text("PRAGMA foreign_key_check")).fetchall() == []
+    """Double-check foreign keys on SQLite (PostgreSQL and MySQL reject orphans on insert)."""
+    if db.engine.dialect.name == "sqlite":
+        assert db.session.execute(text("PRAGMA foreign_key_check")).fetchall() == []
 
 
 # Transactions

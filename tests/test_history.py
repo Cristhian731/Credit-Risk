@@ -119,8 +119,9 @@ def test_evaluating_the_same_customer_twice_keeps_one_client(logged_in):
 def test_history_is_linked_from_the_credit_pages_without_a_new_menu_entry(logged_in):
     form_page = logged_in.get("/credit/").get_data(as_text=True)
     assert 'href="/credit/history"' in form_page
-    logged_in.post("/credit/", data=CREDIT_FORM)
-    assert 'href="/credit/history"' in logged_in.get("/credit/result").get_data(as_text=True)
+    result_page = logged_in.post("/credit/", data=CREDIT_FORM, follow_redirects=True)
+    assert result_page.request.path.startswith("/credit/result/")
+    assert 'href="/credit/history"' in result_page.get_data(as_text=True)
 
     nav = re.search(r"<nav.*?</nav>", form_page, re.DOTALL).group(0)
     assert "history" not in nav.lower()

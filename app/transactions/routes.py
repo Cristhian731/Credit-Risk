@@ -1,11 +1,11 @@
 """Income and expense routes. Data is read and written through the repository."""
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
 from ..auth.services import get_current_user, login_required
 from ..services.repository import (
     delete_transaction,
     get_transaction,
-    list_transactions,
+    paginate_transactions,
     save_transaction,
     update_transaction,
 )
@@ -40,9 +40,13 @@ def _as_form(transaction):
 @bp.route("/")
 @login_required
 def index():
-    """List the current user's transactions."""
-    user = get_current_user()
-    return render_template("transactions/index.html", transactions=list_transactions(user.id))
+    """List the current user's transactions, one page (?page=N) at a time."""
+    page = paginate_transactions(
+        get_current_user().id,
+        request.args.get("page", 1, type=int),
+        current_app.config["PAGE_SIZE"],
+    )
+    return render_template("transactions/index.html", transactions=page["items"], pagination=page)
 
 
 @bp.route("/new", methods=["GET", "POST"])

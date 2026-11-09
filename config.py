@@ -54,14 +54,23 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Authentication switch (see app/auth/services.py and README.md).
-    # False: login_required lets every request through and get_current_user()
-    # returns a demo user (id=1). True: the real authentication is used.
+    # False: every request runs as the persisted demo user (flask seed-demo).
+    # True: the real authentication is used.
     AUTH_ENABLED = _env_flag("AUTH_ENABLED", False)
 
     # CSRF protection for every POST form. The token is tied to the session, so
     # it does not expire on its own (a form left open for hours still works).
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = None
+
+    # Session cookie: unreadable from JavaScript and not sent on cross-site
+    # requests. SECURE (HTTPS only) is turned on in production.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = False
+
+    # Rows per page in the transaction list and the evaluation history.
+    PAGE_SIZE = 20
 
     # Logging: LOG_LEVEL (default INFO) and an optional rotating LOG_FILE.
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
@@ -78,7 +87,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    # Real authentication by default in development; testing and production keep the base value.
+    # Real authentication by default in development (and production); testing keeps the base value.
     AUTH_ENABLED = _env_flag("AUTH_ENABLED", True)
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
 
@@ -86,7 +95,8 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     TESTING = True
     SECRET_KEY = "test-only-insecure-key"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # In-memory SQLite by default; CI sets TEST_DATABASE_URL to run the same tests on PostgreSQL.
+    SQLALCHEMY_DATABASE_URI = normalize_database_url(os.environ.get("TEST_DATABASE_URL", "").strip()) or "sqlite:///:memory:"
     AUTH_ENABLED = False
     # Tests post forms directly; tests/test_csrf.py turns the protection on.
     WTF_CSRF_ENABLED = False
@@ -94,6 +104,9 @@ class TestingConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
+    SESSION_COOKIE_SECURE = True
+    # Real authentication by default: demo mode must never hold real data.
+    AUTH_ENABLED = _env_flag("AUTH_ENABLED", True)
     # SECRET_KEY must come from the environment; create_app() refuses to start without it.
 
 

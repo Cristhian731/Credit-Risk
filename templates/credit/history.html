@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_pagination.html" import pager %}
 
 {% block title %}Evaluation history &middot; Credit Risk{% endblock %}
 
@@ -35,7 +36,8 @@
               <td class="text-end">{{ a.loan_term }}</td>
               <td><span class="badge text-bg-{{ colors[a.risk_label] }}">{{ a.risk_label }}</span></td>
               <td class="text-end">{{ a.risk_percent }}%</td>
-              <td class="text-end">
+              <td class="text-end text-nowrap">
+                <a href="{{ url_for('credit.result', application_id=a.id) }}" class="btn btn-sm btn-outline-primary">View</a>
                 <a href="{{ url_for('credit.delete', application_id=a.id) }}" class="btn btn-sm btn-outline-danger">Delete</a>
               </td>
             </tr>
@@ -45,9 +47,7 @@
         </tbody>
       </table>
     </div>
-    {% if applications|length >= limit %}
-      <p class="text-muted small mt-3 mb-0">Showing the latest {{ limit }} evaluations.</p>
-    {% endif %}
+    {{ pager(pagination, 'credit.history') }}
   </div>
 </div>
 {% endblock %}

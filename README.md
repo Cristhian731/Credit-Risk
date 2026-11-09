@@ -13,14 +13,16 @@ Credit Risk is a web platform with two goals:
 
 | Module | Status |
 |---|---|
-| Application structure, Bootstrap layout and CI | Done |
-| Home page with login card | Done; the login form is interface only |
-| Transactions and dashboard | Working; saved in the database through `app/services/repository.py`; transactions can be edited and deleted (with confirmation); totals are calculated when the dashboard is read |
-| Credit evaluation (`/credit/`) | Working end to end with a **placeholder model** trained on synthetic data; each evaluation is saved with its customer (name and document) and listed in `/credit/history`, where it can be deleted (evaluations are never edited) |
+| Application structure, Bootstrap layout and CI | Done; CI runs the migrations and the tests on SQLite and PostgreSQL |
+| Home page with login card | Done; logged-in users go straight to the dashboard |
+| Transactions and dashboard | Working; saved in the database through `app/services/repository.py`; transactions can be edited and deleted (with confirmation) and are listed 20 per page; totals are calculated by the database when the dashboard is read |
+| Credit evaluation (`/credit/`) | Working end to end with a **placeholder model** trained on synthetic data; each evaluation is saved with its customer (name and document), shown at `/credit/result/<id>` and listed 20 per page in `/credit/history`, where it can be deleted (evaluations are never edited) |
 | Database | Models and migrations (`migrations/`); categories and customers are created the first time they are used |
 | Authentication | Done: registration, login and logout backed by the `users` table; on by default in development (`AUTH_ENABLED=False` uses a demo user) |
+| Security | CSRF on every form, HttpOnly + SameSite=Lax session cookie (Secure in production), 404 for other users' records, foreign keys enforced on SQLite too |
 
-See [docs/INTEGRATION.md](docs/INTEGRATION.md) for the steps to plug in the database and the login.
+See [docs/INTEGRATION.md](docs/INTEGRATION.md) for the architecture, the contracts between modules and
+the deployment on Render.
 
 ## Roadmap
 
@@ -30,6 +32,11 @@ See [docs/INTEGRATION.md](docs/INTEGRATION.md) for the steps to plug in the data
 - Prefill "Monthly Income" and the debt-to-income ratio from the transactions the user has
   recorded, linking both parts of the platform.
 - Spending forecasts and overspending risk from the recorded income and expenses.
+
+After publication:
+
+- Manage categories and customers: rename, merge and delete the ones no longer used (today they
+  are kept when their last transaction or evaluation is edited or deleted).
 
 ## Getting started
 
@@ -52,11 +59,21 @@ and you land on the dashboard. Set `AUTH_ENABLED=false` to run as the demo user 
 Run the tests with:
 
 ```bash
-pytest
+pytest                                   # in-memory SQLite
+TEST_DATABASE_URL=postgresql://user:password@localhost:5432/credit_risk_test pytest   # same suite on PostgreSQL
 ```
 
-The authentication tests (`tests/test_auth_contract.py`, `tests/test_auth_routes.py`) run
-with `AUTH_ENABLED=True`.
+`tests/test_e2e.py` walks the whole journey (register, log in, transactions, credit evaluation,
+history, restart, log out) with authentication and CSRF on. CI runs the suite on SQLite and on
+PostgreSQL, after migrating an empty database in both.
+
+### Commands
+
+| Command | Purpose |
+|---|---|
+| `flask --app run db upgrade` | Create or update the database schema |
+| `flask --app run seed-demo` | Create the demo user and its sample transactions (safe to run again) |
+| `flask --app run adopt-legacy-db OLD NEW` | Move a database created before migrations existed (see [docs/MIGRATIONS.md](docs/MIGRATIONS.md)) |
 
 ### Configuration
 
@@ -65,7 +82,9 @@ with `AUTH_ENABLED=True`.
 | `FLASK_CONFIG` | `development`, `testing` or `production` | `development` |
 | `SECRET_KEY` | Session signing key. **Required in production.** | insecure key in development |
 | `DATABASE_URL` | Database connection URL (PostgreSQL or MySQL, see below) | `sqlite:///credit_risk.db` in `instance/` |
-| `AUTH_ENABLED` | Authentication switch (see below) | `True` in development, `False` in testing and production |
+| `AUTH_ENABLED` | Authentication switch (see below) | `True` in development and production, `False` in testing |
+| `TEST_DATABASE_URL` | Database for the test suite (an empty one; tests create and drop tables) | in-memory SQLite |
+| `LOG_LEVEL`, `LOG_FILE` | Log level and optional rotating log file | `INFO`, none |
 | `CREDIT_MODEL_PATH` | Saved credit classifier | `ml/artifacts/credit_model.pkl` |
 | `CREDIT_SCALER_PATH` | Saved feature scaler | `ml/artifacts/scaler.pkl` |
 
@@ -75,8 +94,8 @@ Production example: `FLASK_CONFIG=production SECRET_KEY=... gunicorn run:app`
 
 | Value | Behavior |
 |---|---|
-| `False` (default in testing and production) | `login_required` lets every request through and `get_current_user()` runs as the persisted demo user (`demo@creditrisk.local`) created by `flask --app run seed-demo`; without it the pages answer 503 with that instruction. |
-| `True` (default in development; also `1`, `yes`, `on`) | The real implementation in `app/auth/services.py` is used: protected pages (`/transactions/`, `/dashboard/`, `/credit/`) require logging in. After logging in the user goes to the page they asked for, or to `/dashboard/`; the home page redirects logged-in users to the dashboard. Passwords need at least 8 characters. |
+| `False` (default in testing) | `login_required` lets every request through and `get_current_user()` runs as the persisted demo user (`demo@creditrisk.local`) created by `flask --app run seed-demo`; without it the pages answer 503 with that instruction. |
+| `True` (default in development and production; also `1`, `yes`, `on`) | The real implementation in `app/auth/services.py` is used: protected pages (`/transactions/`, `/dashboard/`, `/credit/`) require logging in. After logging in the user goes to the page they asked for, or to `/dashboard/`; the home page redirects logged-in users to the dashboard. Passwords need at least 8 characters. |
 
 Example (PowerShell): `$env:AUTH_ENABLED = "true"; python run.py`. See also
 [docs/INTEGRATION.md](docs/INTEGRATION.md).
@@ -100,7 +119,10 @@ Plain `postgres://`, `postgresql://` and `mysql://` URLs are mapped to the insta
 .
 ├── app/
 │   ├── __init__.py          # create_app() application factory
-│   ├── extensions.py        # Flask extensions (SQLAlchemy db)
+│   ├── extensions.py        # Flask extensions: SQLAlchemy, Flask-Migrate, CSRF; SQLite foreign keys
+│   ├── errors.py            # 400 (CSRF), 404, 500 and 503 pages
+│   ├── logging_config.py    # Log handlers
+│   ├── cli.py, seed.py      # flask seed-demo and flask adopt-legacy-db
 │   ├── models.py            # Database model contract
 │   ├── services/
 │   │   └── repository.py    # Data access layer (SQLAlchemy): the only place routes read and write data
@@ -113,6 +135,7 @@ Plain `postgres://`, `postgresql://` and `mysql://` URLs are mapped to the insta
 ├── static/
 │   ├── css/
 │   └── js/
+├── migrations/              # Alembic migrations (see docs/MIGRATIONS.md)
 ├── ml/                      # Feature schema, training scripts and saved model artifacts
 ├── tests/                   # pytest suite, including the contract tests
 ├── docs/                    # Project documentation
@@ -134,9 +157,9 @@ Plain `postgres://`, `postgresql://` and `mysql://` URLs are mapped to the insta
 | `templates/auth/_login_form.html` | Login card on the home page (its design and field names are fixed) | Structure and app lead (@Cristhian731); behavior by teammate B |
 | `tests/test_models_contract.py` | Definition of done for the models | Teammate A |
 | `tests/test_auth_contract.py` | Definition of done for authentication | Teammate B |
-| `tests/test_app.py`, `tests/test_home.py`, `tests/test_credit.py`, `tests/test_transactions.py`, `tests/test_repository.py`, `tests/test_config.py`, `tests/conftest.py` | App, page, repository and configuration tests, shared fixtures | Structure and app lead (@Cristhian731) |
+| The rest of `tests/` | App, pages, repository, migrations, security, pagination and end-to-end tests, shared fixtures | Structure and app lead (@Cristhian731) |
 | `ml/` | Feature schema, placeholder model and future real models | Whole team |
-| `docs/` | Project proposal, integration checklist, requirements and progress notes | Whole team |
+| `docs/` | Project proposal, architecture and integration guide, migrations, requirements and progress notes | Whole team |
 | `.github/` | CI, code owners and pull request template | Structure and app lead (@Cristhian731) |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for branch names, commit format and the contract rules.

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_pagination.html" import pager %}
 
 {% block title %}Transactions &middot; Credit Risk{% endblock %}
 
@@ -45,6 +46,7 @@
         </tbody>
       </table>
     </div>
+    {{ pager(pagination, 'transactions.index') }}
   </div>
 </div>
 {% endblock %}
