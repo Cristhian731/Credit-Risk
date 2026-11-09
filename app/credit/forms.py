@@ -2,7 +2,13 @@
 
 The fields follow ml.features.FEATURE_ORDER, which is also the display order.
 """
+import re
+
 from ml.features import CATEGORICAL_ENCODINGS, FEATURE_ORDER
+
+# Customer identification: 3-30 characters, letters, digits, dots, hyphens and inner spaces.
+CLIENT_DOCUMENT_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\- ]{1,28}[A-Za-z0-9]")
+CLIENT_NAME_MIN, CLIENT_NAME_MAX = 2, 120
 
 # field name -> (label, type, min, max, step)
 NUMERIC_FIELDS = {
@@ -31,6 +37,32 @@ CHOICE_FIELDS = {
 }
 
 FIELD_ORDER = FEATURE_ORDER
+
+
+def validate_client(form):
+    """Validate the customer fields ``client_full_name`` and ``client_document``.
+
+    They are not model features, so they are validated apart from
+    ``validate_form``. Extra spaces are collapsed.
+
+    Returns:
+        ``(clean_values, errors)`` like ``validate_form``.
+    """
+    clean, errors = {}, []
+
+    name = " ".join((form.get("client_full_name") or "").split())
+    if CLIENT_NAME_MIN <= len(name) <= CLIENT_NAME_MAX:
+        clean["client_full_name"] = name
+    else:
+        errors.append(f"Customer full name is required ({CLIENT_NAME_MIN} to {CLIENT_NAME_MAX} characters).")
+
+    document = " ".join((form.get("client_document") or "").split())
+    if CLIENT_DOCUMENT_PATTERN.fullmatch(document):
+        clean["client_document"] = document
+    else:
+        errors.append("Document number must have 3 to 30 characters: letters, digits, dots or hyphens.")
+
+    return clean, errors
 
 
 def validate_form(form):

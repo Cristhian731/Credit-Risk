@@ -2,13 +2,19 @@
 import sqlite3
 
 import pytest
+from alembic.script import ScriptDirectory
 from click.testing import CliRunner
 
 from app import create_app
-from app.cli import adopt_legacy_db_command
+from app.cli import PROJECT_ROOT, adopt_legacy_db_command
 from app.extensions import db
 from app.models import User
 from config import TestingConfig
+
+
+def migration_head():
+    """The newest migration revision."""
+    return ScriptDirectory(str(PROJECT_ROOT / "migrations")).get_current_head()
 
 
 @pytest.fixture
@@ -37,7 +43,7 @@ def test_adopt_copies_data_and_leaves_the_source_untouched(legacy_db, tmp_path):
     assert result.exit_code == 0, result.output
     assert "users: 1 rows" in result.output
     connection = sqlite3.connect(target)
-    assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == ("0001",)
+    assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == (migration_head(),)
     assert connection.execute("SELECT username, email FROM users").fetchall() == [("ana", "ana@example.com")]
     connection.close()
     assert legacy_db.read_bytes() == before

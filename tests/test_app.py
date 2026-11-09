@@ -56,11 +56,11 @@ def test_production_disables_debug(monkeypatch):
 
 
 @pytest.mark.parametrize("path", PAGES)
-def test_page_responds_ok_with_auth_disabled(client, path):
+def test_page_responds_ok_with_auth_disabled(client, demo_user, path):
     assert client.get(path).status_code == 200
 
 
-def test_base_layout_shows_navigation(client):
+def test_base_layout_shows_navigation(client, demo_user):
     html = client.get("/").get_data(as_text=True)
 
     for anchor in (
@@ -81,17 +81,29 @@ def test_static_files_are_served(client):
     assert client.get("/static/js/main.js").status_code == 200
 
 
-def test_auth_disabled_uses_demo_user(app):
+def test_auth_disabled_uses_the_persisted_demo_user(app, demo_user):
     with app.test_request_context():
         user = services.get_current_user()
-        assert user is services.DEMO_USER
-        assert (user.id, user.username) == (1, "demo user")
+        assert user.id == demo_user.id
+        assert (user.username, user.email) == (services.DEMO_USERNAME, services.DEMO_EMAIL)
 
 
-def test_login_required_passes_with_auth_disabled(app):
+def test_auth_disabled_without_demo_user_has_no_current_user(app):
+    with app.test_request_context():
+        assert services.get_current_user() is None
+
+
+def test_login_required_passes_with_auth_disabled(app, demo_user):
     @services.login_required
     def view():
         return g.user
 
     with app.test_request_context():
-        assert view() is services.DEMO_USER
+        assert view().id == demo_user.id
+
+
+@pytest.mark.parametrize("path", ["/transactions/", "/dashboard/", "/credit/", "/credit/history"])
+def test_demo_mode_without_demo_user_shows_how_to_create_it(client, path):
+    response = client.get(path)
+    assert response.status_code == 503
+    assert "flask --app run seed-demo" in response.get_data(as_text=True)

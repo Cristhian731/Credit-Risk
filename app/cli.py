@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 
 import click
+from flask.cli import with_appcontext
+from sqlalchemy.exc import IntegrityError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -70,6 +72,21 @@ def adopt_legacy_db_command(source, target):
     click.echo(f"Done. Point DATABASE_URL (or instance/credit_risk.db) to {target} when you are ready.")
 
 
+@click.command("seed-demo")
+@with_appcontext
+def seed_demo_command():
+    """Create the demo user and its sample transactions (safe to run again)."""
+    from .seed import seed_demo
+
+    try:
+        result = seed_demo()
+    except IntegrityError as error:
+        raise click.ClickException(f"Could not create the demo user (is the username taken?): {error.orig}")
+    click.echo("Demo user created." if result["user_created"] else "Demo user already exists.")
+    click.echo(f"Sample transactions added: {result['transactions_added']}")
+
+
 def register_cli(app):
     """Attach the CLI commands to the application."""
     app.cli.add_command(adopt_legacy_db_command)
+    app.cli.add_command(seed_demo_command)

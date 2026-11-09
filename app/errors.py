@@ -1,4 +1,4 @@
-"""Error pages for 400 (invalid CSRF token), 404 and 500."""
+"""Error pages for 400 (invalid CSRF token), 404, 500 and 503 (demo user missing)."""
 from flask import current_app, render_template, request
 from flask_wtf.csrf import CSRFError
 
@@ -26,6 +26,11 @@ def register_error_handlers(app):
     def not_found(error):
         current_app.logger.info("404 on %s %s", request.method, request.path)
         return _render("errors/404.html", 404)
+
+    @app.errorhandler(503)
+    def unavailable(error):
+        current_app.logger.warning("503 on %s %s: %s", request.method, request.path, error.description)
+        return render_template("errors/503.html", message=error.description), 503
 
     @app.errorhandler(500)
     def server_error(error):

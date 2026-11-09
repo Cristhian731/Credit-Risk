@@ -69,6 +69,8 @@ class Category(db.Model):
     __tablename__ = "categories"
     __table_args__ = (
         db.CheckConstraint(_in_check("type", TRANSACTION_TYPES), name="ck_categories_type"),
+        # A user has one category per name and type ("Food" as expense, "Salary" as income).
+        db.UniqueConstraint("user_id", "type", "name", name="uq_categories_user_id_type_name"),
     )
 
     id = db.Column(db.Integer, primary_key=True)

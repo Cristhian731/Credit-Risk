@@ -3,7 +3,6 @@ import pytest
 
 from app import create_app
 from app.extensions import db
-from app.services import repository
 
 
 @pytest.fixture
@@ -24,9 +23,10 @@ def client(app):
     return app.test_client()
 
 
-@pytest.fixture(autouse=True)
-def empty_repository():
-    """Start every test with no stored transactions or credit applications."""
-    repository.reset(seed=False)
-    yield
-    repository.reset(seed=False)
+@pytest.fixture
+def demo_user(app):
+    """The persisted demo user that AUTH_ENABLED=False runs as (what flask seed-demo creates)."""
+    from app.seed import ensure_demo_user
+
+    user, _created = ensure_demo_user()
+    return user

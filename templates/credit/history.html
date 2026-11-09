@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Evaluation history &middot; Credit Risk{% endblock %}
+
+{% block content %}
+{% set colors = {'Approved': 'success', 'Medium Risk': 'warning', 'High Risk': 'danger'} %}
+<div class="container py-4">
+  <div class="card p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <h2 class="fw-bold mb-0">Evaluation history</h2>
+      <a href="{{ url_for('credit.index') }}" class="btn btn-primary">New evaluation</a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Date (UTC)</th>
+            <th>Customer</th>
+            <th>Document</th>
+            <th class="text-end">Loan amount</th>
+            <th class="text-end">Term (months)</th>
+            <th>Result</th>
+            <th class="text-end">Risk</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in applications %}
+            <tr>
+              <td>{{ a.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>{{ a.client_full_name }}</td>
+              <td>{{ a.client_document }}</td>
+              <td class="text-end">{{ "{:,.2f}".format(a.loan_amount) }}</td>
+              <td class="text-end">{{ a.loan_term }}</td>
+              <td><span class="badge text-bg-{{ colors[a.risk_label] }}">{{ a.risk_label }}</span></td>
+              <td class="text-end">{{ a.risk_percent }}%</td>
+              <td class="text-end">
+                <a href="{{ url_for('credit.delete', application_id=a.id) }}" class="btn btn-sm btn-outline-danger">Delete</a>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" class="text-muted">No evaluations yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if applications|length >= limit %}
+      <p class="text-muted small mt-3 mb-0">Showing the latest {{ limit }} evaluations.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

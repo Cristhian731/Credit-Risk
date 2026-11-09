@@ -4,7 +4,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from flask_migrate import downgrade, upgrade
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from app import create_app
@@ -73,3 +73,33 @@ def test_client_document_is_unique_per_user(migrated_app):
     with pytest.raises(IntegrityError):
         db.session.commit()
     db.session.rollback()
+
+
+def _insert_user_and_category(name="Food"):
+    db.session.execute(text("INSERT INTO users (id, username, email, password_hash, created_at) VALUES (1, 'ana', 'ana@example.com', 'x', '2026-11-08')"))
+    db.session.execute(text(f"INSERT INTO categories (name, type, user_id) VALUES ('{name}', 'expense', 1)"))
+    db.session.commit()
+
+
+def test_0002_enforces_one_category_per_user_and_type(migrated_app):
+    upgrade(revision="0001")
+    _insert_user_and_category()
+    upgrade(revision="0002")
+
+    assert db.session.execute(text("SELECT name FROM categories")).scalars().all() == ["Food"]  # data kept
+    with pytest.raises(IntegrityError):
+        db.session.execute(text("INSERT INTO categories (name, type, user_id) VALUES ('Food', 'expense', 1)"))
+    db.session.rollback()
+    db.session.execute(text("INSERT INTO categories (name, type, user_id) VALUES ('Food', 'income', 1)"))  # other type: allowed
+    db.session.commit()
+
+
+def test_0002_downgrade_removes_the_rule_and_keeps_the_data(migrated_app):
+    upgrade()
+    _insert_user_and_category()
+    downgrade(revision="0001")
+
+    db.session.execute(text("INSERT INTO categories (name, type, user_id) VALUES ('Food', 'expense', 1)"))  # duplicates allowed again
+    db.session.commit()
+    assert db.session.execute(text("SELECT COUNT(*) FROM categories")).scalar() == 2
+    assert db.session.execute(text("SELECT COUNT(*) FROM users")).scalar() == 1

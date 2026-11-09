@@ -7,6 +7,9 @@ import pytest
 from app.services import repository
 from app.transactions.forms import validate_transaction
 
+# These tests run in demo mode (AUTH_ENABLED False), which needs the demo user.
+pytestmark = pytest.mark.usefixtures("demo_user")
+
 VALID_FORM = {
     "type": "expense",
     "amount": "45000.50",
@@ -45,13 +48,13 @@ def test_description_is_optional():
     assert values["description"] == ""
 
 
-def test_saving_a_transaction_stores_it_for_the_current_user(client):
+def test_saving_a_transaction_stores_it_for_the_current_user(client, demo_user):
     response = client.post("/transactions/new", data=VALID_FORM)
     assert response.status_code == 302
     assert response.headers["Location"] == "/transactions/"
 
-    (saved,) = repository.list_transactions(1)
-    assert saved["user_id"] == 1
+    (saved,) = repository.list_transactions(demo_user.id)
+    assert saved["user_id"] == demo_user.id
     assert saved["amount"] == Decimal("45000.50")
 
     html = client.get("/transactions/").get_data(as_text=True)
@@ -59,13 +62,13 @@ def test_saving_a_transaction_stores_it_for_the_current_user(client):
     assert "Taxi" in html
 
 
-def test_invalid_submission_keeps_form_data(client):
+def test_invalid_submission_keeps_form_data(client, demo_user):
     response = client.post("/transactions/new", data={**VALID_FORM, "amount": "-5"})
     html = response.get_data(as_text=True)
     assert response.status_code == 400
     assert "Amount must be a positive number" in html
     assert 'value="Transport"' in html
-    assert repository.list_transactions(1) == []
+    assert repository.list_transactions(demo_user.id) == []
 
 
 def test_dashboard_summarizes_saved_transactions(client):

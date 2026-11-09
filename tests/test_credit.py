@@ -6,7 +6,12 @@ from app.credit.services import PredictionService
 from app.services import repository
 from ml.features import FEATURE_ORDER
 
+# These tests run in demo mode (AUTH_ENABLED False), which needs the demo user.
+pytestmark = pytest.mark.usefixtures("demo_user")
+
 VALID_FORM = {
+    "client_full_name": "Maria Lopez",
+    "client_document": "100200300",
     "age": "35",
     "monthly_income": "4000",
     "employment_status": "employed",
@@ -149,17 +154,18 @@ def test_unavailable_model_returns_503(app, credit_client):
     assert "not available" in response.get_data(as_text=True)
 
 
-def test_evaluation_is_saved_for_the_current_user(credit_client):
+def test_evaluation_is_saved_for_the_current_user(credit_client, demo_user):
     credit_client.post("/credit/", data=VALID_FORM)
 
-    (saved,) = repository.list_credit_applications(1)
-    assert saved["user_id"] == 1
+    (saved,) = repository.list_credit_applications(demo_user.id)
+    assert saved["user_id"] == demo_user.id
+    assert (saved["client_full_name"], saved["client_document"]) == ("Maria Lopez", "100200300")
     assert saved["employment_status"] == "employed"
     assert saved["payment_history"] == "good"
     assert saved["risk_label"] in ("Approved", "Medium Risk", "High Risk")
     assert set(FEATURE_ORDER) <= set(saved)
 
 
-def test_invalid_submission_is_not_saved(credit_client):
+def test_invalid_submission_is_not_saved(credit_client, demo_user):
     credit_client.post("/credit/", data={**VALID_FORM, "credit_score": "900"})
-    assert repository.list_credit_applications(1) == []
+    assert repository.list_credit_applications(demo_user.id) == []

@@ -19,6 +19,7 @@
             <th>Category</th>
             <th>Description</th>
             <th class="text-end">Amount</th>
+            <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -33,9 +34,13 @@
               <td>{{ t.category }}</td>
               <td>{{ t.description }}</td>
               <td class="text-end">{{ "{:,.2f}".format(t.amount) }}</td>
+              <td class="text-end text-nowrap">
+                <a href="{{ url_for('transactions.edit', transaction_id=t.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <a href="{{ url_for('transactions.delete', transaction_id=t.id) }}" class="btn btn-sm btn-outline-danger">Delete</a>
+              </td>
             </tr>
           {% else %}
-            <tr><td colspan="5" class="text-muted">No transactions yet.</td></tr>
+            <tr><td colspan="6" class="text-muted">No transactions yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>

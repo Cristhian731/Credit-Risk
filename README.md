@@ -15,9 +15,9 @@ Credit Risk is a web platform with two goals:
 |---|---|
 | Application structure, Bootstrap layout and CI | Done |
 | Home page with login card | Done; the login form is interface only |
-| Transactions and dashboard | Working; data is kept in memory by `app/services/repository.py` until the database exists |
-| Credit evaluation (`/credit/`) | Working end to end with a **placeholder model** trained on synthetic data; evaluations are saved through the repository |
-| Database models | Contract defined, pending (teammate A) |
+| Transactions and dashboard | Working; saved in the database through `app/services/repository.py`; transactions can be edited and deleted (with confirmation); totals are calculated when the dashboard is read |
+| Credit evaluation (`/credit/`) | Working end to end with a **placeholder model** trained on synthetic data; each evaluation is saved with its customer (name and document) and listed in `/credit/history`, where it can be deleted (evaluations are never edited) |
+| Database | Models and migrations (`migrations/`); categories and customers are created the first time they are used |
 | Authentication | Done: registration, login and logout backed by the `users` table; on by default in development (`AUTH_ENABLED=False` uses a demo user) |
 
 See [docs/INTEGRATION.md](docs/INTEGRATION.md) for the steps to plug in the database and the login.
@@ -27,7 +27,6 @@ See [docs/INTEGRATION.md](docs/INTEGRATION.md) for the steps to plug in the data
 - Replace the placeholder with a credit model trained on real data, following the CRISP-DM
   plan in [docs/Project_Proposal.md](docs/Project_Proposal.md), including explainability of
   the key decision factors.
-- Show each user the history of their credit evaluations (already saved through the repository).
 - Prefill "Monthly Income" and the debt-to-income ratio from the transactions the user has
   recorded, linking both parts of the platform.
 - Spending forecasts and overspending risk from the recorded income and expenses.
@@ -47,7 +46,8 @@ The schema is managed with migrations; see [docs/MIGRATIONS.md](docs/MIGRATIONS.
 database created before migrations existed).
 
 Open http://127.0.0.1:5000. In development authentication is on by default: register, log in
-and you land on the dashboard. Set `AUTH_ENABLED=false` to use the demo user instead.
+and you land on the dashboard. Set `AUTH_ENABLED=false` to run as the demo user instead, after creating it with
+`flask --app run seed-demo` (it also loads a few sample transactions; running it again adds nothing).
 
 Run the tests with:
 
@@ -75,12 +75,13 @@ Production example: `FLASK_CONFIG=production SECRET_KEY=... gunicorn run:app`
 
 | Value | Behavior |
 |---|---|
-| `False` (default in testing and production) | `login_required` lets every request through and `get_current_user()` returns a demo user (`"demo user"`, id=1). Use it while the real login does not exist. |
+| `False` (default in testing and production) | `login_required` lets every request through and `get_current_user()` runs as the persisted demo user (`demo@creditrisk.local`) created by `flask --app run seed-demo`; without it the pages answer 503 with that instruction. |
 | `True` (default in development; also `1`, `yes`, `on`) | The real implementation in `app/auth/services.py` is used: protected pages (`/transactions/`, `/dashboard/`, `/credit/`) require logging in. After logging in the user goes to the page they asked for, or to `/dashboard/`; the home page redirects logged-in users to the dashboard. Passwords need at least 8 characters. |
 
 Example (PowerShell): `$env:AUTH_ENABLED = "true"; python run.py`. See also
 [docs/INTEGRATION.md](docs/INTEGRATION.md).
-With `False`, every visitor acts as the demo user, so do not store real data in that mode.
+With `False`, every visitor acts as the demo user, so do not store real data in that mode. Nobody can log in as the
+demo user (its password is random) and its data is never shown to real users.
 
 ### Database URL
 
@@ -102,7 +103,7 @@ Plain `postgres://`, `postgresql://` and `mysql://` URLs are mapped to the insta
 │   ├── extensions.py        # Flask extensions (SQLAlchemy db)
 │   ├── models.py            # Database model contract
 │   ├── services/
-│   │   └── repository.py    # Data access layer: the only place routes read and write data
+│   │   └── repository.py    # Data access layer (SQLAlchemy): the only place routes read and write data
 │   ├── main/                # Home page blueprint
 │   ├── transactions/        # Transactions blueprint
 │   ├── dashboard/           # Dashboard blueprint
@@ -128,7 +129,7 @@ Plain `postgres://`, `postgresql://` and `mysql://` URLs are mapped to the insta
 | `app/credit/` | Credit evaluation routes, form validation and prediction service | Structure and app lead (@Cristhian731) |
 | `templates/`, `static/` | Layout, pages, styles and scripts | Structure and app lead (@Cristhian731) |
 | `app/models.py` | SQLAlchemy models: User, Category, Transaction, Budget, Client, CreditApplication | Teammate A (database) |
-| `app/services/repository.py` | Data access functions used by the routes (in memory for now) | Teammate A (database) |
+| `app/services/repository.py` | Data access functions used by the routes (database queries) | Teammate A (database) |
 | `app/auth/services.py`, `app/auth/routes.py` | Login, registration, logout, `get_current_user` and `login_required` | Teammate B (authentication) |
 | `templates/auth/_login_form.html` | Login card on the home page (its design and field names are fixed) | Structure and app lead (@Cristhian731); behavior by teammate B |
 | `tests/test_models_contract.py` | Definition of done for the models | Teammate A |

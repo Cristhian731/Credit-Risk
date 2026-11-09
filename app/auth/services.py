@@ -3,6 +3,7 @@
 from functools import wraps
 
 from flask import (
+    abort,
     current_app,
     g,
     redirect,
@@ -17,20 +18,27 @@ SESSION_USER_KEY = "user_id"
 MIN_PASSWORD_LENGTH = 8
 
 
-class _DemoUser:
-    """Stand-in for app.models.User while AUTH_ENABLED is False."""
-
-    id = 1
-    username = "demo user"
-    email = "demo@creditrisk.local"
-
-
-DEMO_USER = _DemoUser()
+# Identity of the demo user. The account is created by ``flask seed-demo`` and
+# used while AUTH_ENABLED is False; nobody can log in as it (random password).
+DEMO_EMAIL = "demo@creditrisk.local"
+DEMO_USERNAME = "demo user"
+DEMO_USER_MISSING_MESSAGE = "Demo mode needs the demo user. Run: flask --app run seed-demo"
 
 
 def auth_enabled():
     """Return True when real authentication must be used."""
     return bool(current_app.config.get("AUTH_ENABLED", False))
+
+
+def get_demo_user():
+    """Return the persisted demo user, or None if ``flask seed-demo`` has not run."""
+
+    from app.extensions import db
+    from app.models import User
+
+    return db.session.execute(
+        db.select(User).filter_by(email=DEMO_EMAIL)
+    ).scalar_one_or_none()
 
 
 def register_user(username, email, password):
@@ -55,6 +63,10 @@ def register_user(username, email, password):
 
     username = username.strip()
     email = email.strip().lower()
+
+    if email == DEMO_EMAIL:
+        # Reserved: registering it would let a stranger own the demo data.
+        raise ValueError("Username or email is already registered.")
 
     existing_username = db.session.execute(
         db.select(User).filter_by(username=username)
@@ -118,7 +130,7 @@ def get_current_user():
     """Return the logged-in user or None."""
 
     if not auth_enabled():
-        return DEMO_USER
+        return get_demo_user()
 
     from app.extensions import db
     from app.models import User
@@ -138,7 +150,9 @@ def login_required(view):
     def wrapped_view(*args, **kwargs):
 
         if not auth_enabled():
-            g.user = DEMO_USER
+            g.user = get_demo_user()
+            if g.user is None:
+                abort(503, description=DEMO_USER_MISSING_MESSAGE)
             return view(*args, **kwargs)
 
         user = get_current_user()

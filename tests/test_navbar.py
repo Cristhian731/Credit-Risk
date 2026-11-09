@@ -88,7 +88,7 @@ def test_home_does_not_redirect_in_demo_mode(client):
 
 # e) Demo mode (AUTH_ENABLED False)
 
-def test_navbar_demo_mode_keeps_app_links(client):
+def test_navbar_demo_mode_keeps_app_links(client, demo_user):
     nav = navbar(client.get("/"))
     for label in PUBLIC_LABELS + APP_LABELS + ("Log in",):
         assert label in nav
