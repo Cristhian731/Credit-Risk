@@ -15,8 +15,8 @@ _DATABASE_DRIVERS = {
 
 
 def _env_flag(name, default):
-    """Read a boolean environment variable ("true"/"false")."""
-    return os.environ.get(name, str(default)).strip().lower() == "true"
+    """Read a boolean environment variable ("true"/"1"/"yes"/"on" mean True)."""
+    return os.environ.get(name, str(default)).strip().lower() in ("true", "1", "yes", "on")
 
 
 def normalize_database_url(url):
@@ -69,6 +69,8 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    # Real authentication by default in development; testing and production keep the base value.
+    AUTH_ENABLED = _env_flag("AUTH_ENABLED", True)
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
 
 

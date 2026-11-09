@@ -37,6 +37,12 @@ def create_app(config_name=None):
 
     db.init_app(app)
 
+    # Register the tables and create any that are missing (from the DataBase branch).
+    from . import models  # noqa: F401
+
+    with app.app_context():
+        db.create_all()
+
     # One shared instance: the model is loaded once, not per request.
     app.extensions["credit_predictor"] = PredictionService(
         model_path=app.config["CREDIT_MODEL_PATH"],

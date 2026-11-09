@@ -1,4 +1,3 @@
-
 """Tests for the application structure: factory, configuration and routes."""
 
 import pytest
@@ -6,7 +5,7 @@ from flask import g
 
 from app import create_app
 from app.auth import services
-from config import ProductionConfig
+from config import DevelopmentConfig, ProductionConfig, TestingConfig
 
 PAGES = [
     "/",
@@ -22,10 +21,25 @@ def test_development_config_enables_debug():
     assert app.debug is True
 
 
-@pytest.mark.parametrize("name", ["development", "testing"])
-def test_auth_is_disabled_by_default(monkeypatch, name):
-    monkeypatch.delenv("AUTH_ENABLED", raising=False)
-    assert create_app(name).config["AUTH_ENABLED"] is False
+def test_auth_is_enabled_by_default_in_development():
+    assert DevelopmentConfig.AUTH_ENABLED is True
+
+
+@pytest.mark.parametrize("config_class", [TestingConfig, ProductionConfig])
+def test_auth_is_disabled_by_default_outside_development(config_class):
+    assert config_class.AUTH_ENABLED is False
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [("true", True), ("True", True), ("1", True), ("yes", True), ("on", True),
+     ("false", False), ("0", False), ("no", False), ("", False)],
+)
+def test_env_flag_values(monkeypatch, value, expected):
+    from config import _env_flag
+
+    monkeypatch.setenv("AUTH_ENABLED", value)
+    assert _env_flag("AUTH_ENABLED", False) is expected
 
 
 def test_production_requires_secret_key(monkeypatch):

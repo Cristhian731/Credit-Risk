@@ -18,7 +18,7 @@ Credit Risk is a web platform with two goals:
 | Transactions and dashboard | Working; data is kept in memory by `app/services/repository.py` until the database exists |
 | Credit evaluation (`/credit/`) | Working end to end with a **placeholder model** trained on synthetic data; evaluations are saved through the repository |
 | Database models | Contract defined, pending (teammate A) |
-| Authentication | Contract defined, pending (teammate B); `AUTH_ENABLED=False` uses a demo user |
+| Authentication | Done: registration, login and logout backed by the `users` table; on by default in development (`AUTH_ENABLED=False` uses a demo user) |
 
 See [docs/INTEGRATION.md](docs/INTEGRATION.md) for the steps to plug in the database and the login.
 
@@ -42,8 +42,8 @@ pip install -r requirements.txt
 python run.py
 ```
 
-Open http://127.0.0.1:5000. Authentication is off by default (`AUTH_ENABLED=False`), so every
-page works with a demo user.
+Open http://127.0.0.1:5000. In development authentication is on by default: register, log in
+and you land on the dashboard. Set `AUTH_ENABLED=false` to use the demo user instead.
 
 Run the tests with:
 
@@ -51,8 +51,8 @@ Run the tests with:
 pytest
 ```
 
-The contract tests show as `xfailed` until the database models and authentication are
-implemented.
+The authentication tests (`tests/test_auth_contract.py`, `tests/test_auth_routes.py`) run
+with `AUTH_ENABLED=True`.
 
 ### Configuration
 
@@ -61,7 +61,7 @@ implemented.
 | `FLASK_CONFIG` | `development`, `testing` or `production` | `development` |
 | `SECRET_KEY` | Session signing key. **Required in production.** | insecure key in development |
 | `DATABASE_URL` | Database connection URL (PostgreSQL or MySQL, see below) | `sqlite:///credit_risk.db` in `instance/` |
-| `AUTH_ENABLED` | Authentication switch (see below) | `False` |
+| `AUTH_ENABLED` | Authentication switch (see below) | `True` in development, `False` in testing and production |
 | `CREDIT_MODEL_PATH` | Saved credit classifier | `ml/artifacts/credit_model.pkl` |
 | `CREDIT_SCALER_PATH` | Saved feature scaler | `ml/artifacts/scaler.pkl` |
 
@@ -71,10 +71,11 @@ Production example: `FLASK_CONFIG=production SECRET_KEY=... gunicorn run:app`
 
 | Value | Behavior |
 |---|---|
-| `False` (default) | `login_required` lets every request through and `get_current_user()` returns a demo user (`"demo user"`, id=1). Use it while the real login does not exist. |
-| `True` | The real implementation in `app/auth/services.py` (teammate B) is used: protected pages (`/transactions/`, `/dashboard/`, `/credit/`) require logging in. |
+| `False` (default in testing and production) | `login_required` lets every request through and `get_current_user()` returns a demo user (`"demo user"`, id=1). Use it while the real login does not exist. |
+| `True` (default in development; also `1`, `yes`, `on`) | The real implementation in `app/auth/services.py` is used: protected pages (`/transactions/`, `/dashboard/`, `/credit/`) require logging in. After logging in the user goes to the page they asked for, or to `/dashboard/`; the home page redirects logged-in users to the dashboard. Passwords need at least 8 characters. |
 
-Turn it on only after the login is implemented (see [docs/INTEGRATION.md](docs/INTEGRATION.md)).
+Example (PowerShell): `$env:AUTH_ENABLED = "true"; python run.py`. See also
+[docs/INTEGRATION.md](docs/INTEGRATION.md).
 With `False`, every visitor acts as the demo user, so do not store real data in that mode.
 
 ### Database URL

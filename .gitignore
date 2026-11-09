@@ -7,21 +7,22 @@
 venv/
 .venv/
 env/
+
 # Python bytecode and caches
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .coverage
 htmlcov/
+
 # Local databases and Flask instance folder
 *.db
 *.sqlite
 *.sqlite3
 instance/
+
 # Editors and OS files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-*.pyc
-credito.db

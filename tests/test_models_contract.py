@@ -1,7 +1,6 @@
 """Contract for app/models.py (teammate A).
 
-The database part is done when every test here passes. Then remove the
-``pytestmark`` xfail line below so a regression fails the build.
+The database part is done: every test here must keep passing.
 """
 from datetime import date
 from decimal import Decimal
@@ -13,8 +12,6 @@ from app.extensions import db
 from app.models import Budget, Category, Client, CreditApplication, Transaction, User
 from ml.features import FEATURE_ORDER
 
-# TODO(teammate A): delete this marker once the models are implemented.
-pytestmark = pytest.mark.xfail(reason="Pending teammate A: implement app/models.py", strict=False)
 
 MODELS = {
     User: "users",

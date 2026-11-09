@@ -1,4 +1,3 @@
-
 """Authentication services for Credit Risk."""
 
 from functools import wraps
@@ -13,6 +12,9 @@ from flask import (
 )
 
 SESSION_USER_KEY = "user_id"
+
+# Same minimum as the minlength of the registration form.
+MIN_PASSWORD_LENGTH = 8
 
 
 class _DemoUser:
@@ -45,6 +47,11 @@ def register_user(username, email, password):
         or not isinstance(password, str) or not password.strip()
     ):
         raise ValueError("Username, email and password are required.")
+
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise ValueError(
+            f"Password must be at least {MIN_PASSWORD_LENGTH} characters long."
+        )
 
     username = username.strip()
     email = email.strip().lower()

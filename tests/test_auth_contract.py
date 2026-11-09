@@ -1,8 +1,7 @@
 """Contract for app/auth/services.py (teammate B).
 
 Authentication is done when every test here passes. It needs the models from
-teammate A. Then remove the ``pytestmark`` xfail line below so a regression
-fails the build. These tests always run with AUTH_ENABLED=True.
+teammate A. These tests always run with AUTH_ENABLED=True.
 """
 import pytest
 from flask import g, session
@@ -17,9 +16,6 @@ from app.auth.services import (
 )
 from app.extensions import db
 from app.models import User
-
-# TODO(teammate B): delete this marker once authentication is implemented.
-
 
 EMAIL = "ana@example.com"
 PASSWORD = "correct-horse-battery"

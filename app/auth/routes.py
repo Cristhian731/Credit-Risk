@@ -1,4 +1,3 @@
-
 """Authentication routes for Credit Risk."""
 
 from flask import flash, redirect, render_template, request, url_for
@@ -12,13 +11,28 @@ from .services import (
 )
 
 
+def _safe_next():
+    """Return the ``next`` page if it is a local path, otherwise None."""
+
+    next_page = request.args.get("next", "")
+    if next_page.startswith("/") and not next_page.startswith(("//", "/\\")):
+        return next_page
+    return None
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
-    """Authenticate a user using the home page login form."""
+    """Authenticate a user using the home page login form.
+
+    After a successful login the user goes to ``next`` when it is a local
+    path, otherwise to the dashboard.
+    """
 
     if not auth_enabled():
         flash("Authentication is currently disabled.", "info")
         return redirect(url_for("main.index"))
+
+    next_page = _safe_next()
 
     if request.method == "POST":
         email = request.form.get("email", "")
@@ -29,17 +43,13 @@ def login():
 
         if user is None:
             flash("Invalid email or password.", "danger")
-            return redirect(url_for("main.index", _anchor="login"))
+            return redirect(url_for("main.index", next=next_page, _anchor="login"))
 
         flash("You have successfully logged in.", "success")
+        return redirect(next_page or url_for("dashboard.index"))
 
-        next_page = request.args.get("next")
-        if next_page and next_page.startswith("/") and not next_page.startswith("//"):
-            return redirect(next_page)
-
-        return redirect(url_for("main.index"))
-
-    return redirect(url_for("main.index", _anchor="login"))
+    # The login form lives on the home page; keep ``next`` so it is not lost.
+    return redirect(url_for("main.index", next=next_page, _anchor="login"))
 
 
 @bp.route("/register", methods=["GET", "POST"])
@@ -67,9 +77,9 @@ def register():
     return render_template("auth/register.html")
 
 
-@bp.route("/logout", methods=["GET", "POST"])
+@bp.route("/logout", methods=["POST"])
 def logout():
-    """Log out the current user."""
+    """Log out the current user (POST only, sent by the navbar button)."""
 
     logout_user()
     flash("You have successfully logged out.", "success")

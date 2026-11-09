@@ -28,12 +28,17 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="main-nav">
+        {# Logged in with real authentication: only the app links, the user name and Log out. #}
+        {% set logged_in = auth_enabled and current_user %}
         <ul class="navbar-nav ms-auto align-items-lg-center">
-          {% for anchor, label in section_links %}
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('main.index', _anchor=anchor) }}">{{ label }}</a>
-            </li>
-          {% endfor %}
+          {% if not logged_in %}
+            {% for anchor, label in section_links %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('main.index', _anchor=anchor) }}">{{ label }}</a>
+              </li>
+            {% endfor %}
+          {% endif %}
+          {# Demo mode (AUTH_ENABLED False) also keeps the app links visible. #}
           {% if current_user %}
             {% for endpoint, label in app_links %}
               <li class="nav-item">
@@ -42,15 +47,25 @@
               </li>
             {% endfor %}
           {% endif %}
-          <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
-            {% if auth_enabled and current_user %}
+          {% if logged_in %}
+            <li class="nav-item ms-lg-2">
+              <span class="navbar-text text-white">{{ current_user.username }}</span>
+            </li>
+            <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
               <form method="post" action="{{ url_for('auth.logout') }}">
                 <button type="submit" class="btn btn-outline-light btn-sm">Log out</button>
               </form>
-            {% else %}
+            </li>
+          {% else %}
+            <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
               <a class="btn btn-warning btn-sm fw-semibold" href="{{ url_for('main.index', _anchor='login') }}">Log in</a>
+            </li>
+            {% if auth_enabled %}
+              <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+                <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.register') }}">Register</a>
+              </li>
             {% endif %}
-          </li>
+          {% endif %}
         </ul>
       </div>
     </div>
