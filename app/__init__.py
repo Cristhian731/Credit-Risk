@@ -6,8 +6,11 @@ from flask import Flask
 from config import config_by_name
 
 from .auth.services import auth_enabled, get_current_user
+from .cli import register_cli
 from .credit.services import PredictionService
-from .extensions import db
+from .errors import register_error_handlers
+from .extensions import csrf, db, migrate
+from .logging_config import configure_logging
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -35,13 +38,16 @@ def create_app(config_name=None):
             f"SECRET_KEY environment variable is required for the '{config_name}' configuration."
         )
 
-    db.init_app(app)
+    configure_logging(app)
 
-    # Register the tables and create any that are missing (from the DataBase branch).
+    db.init_app(app)
+    csrf.init_app(app)
+
+    # Import the models so Flask-Migrate sees every table. The schema itself is
+    # created and changed only through migrations: flask --app run db upgrade.
     from . import models  # noqa: F401
 
-    with app.app_context():
-        db.create_all()
+    migrate.init_app(app, db)
 
     # One shared instance: the model is loaded once, not per request.
     app.extensions["credit_predictor"] = PredictionService(
@@ -52,6 +58,8 @@ def create_app(config_name=None):
     )
 
     register_blueprints(app)
+    register_error_handlers(app)
+    register_cli(app)
 
     @app.context_processor
     def inject_auth_state():

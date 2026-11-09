@@ -58,6 +58,15 @@ class Config:
     # returns a demo user (id=1). True: the real authentication is used.
     AUTH_ENABLED = _env_flag("AUTH_ENABLED", False)
 
+    # CSRF protection for every POST form. The token is tied to the session, so
+    # it does not expire on its own (a form left open for hours still works).
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = None
+
+    # Logging: LOG_LEVEL (default INFO) and an optional rotating LOG_FILE.
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+    LOG_FILE = os.environ.get("LOG_FILE") or None
+
     # Credit viability model saved by the ml/ package.
     CREDIT_MODEL_PATH = os.environ.get("CREDIT_MODEL_PATH", MODEL_PATH)
     CREDIT_SCALER_PATH = os.environ.get("CREDIT_SCALER_PATH", SCALER_PATH)
@@ -79,6 +88,8 @@ class TestingConfig(Config):
     SECRET_KEY = "test-only-insecure-key"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     AUTH_ENABLED = False
+    # Tests post forms directly; tests/test_csrf.py turns the protection on.
+    WTF_CSRF_ENABLED = False
 
 
 class ProductionConfig(Config):

@@ -12,6 +12,7 @@
           <p class="text-muted">Register to access the Credit Risk platform.</p>
 
           <form method="POST" action="{{ url_for('auth.register') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
               <label for="register-username" class="form-label">Username</label>
               <input

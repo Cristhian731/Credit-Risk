@@ -39,8 +39,12 @@ python -m venv venv
 venv\Scripts\activate          # Windows
 # source venv/bin/activate     # macOS / Linux
 pip install -r requirements.txt
+flask --app run db upgrade     # creates the database tables (first run only)
 python run.py
 ```
+
+The schema is managed with migrations; see [docs/MIGRATIONS.md](docs/MIGRATIONS.md) (including how to move a
+database created before migrations existed).
 
 Open http://127.0.0.1:5000. In development authentication is on by default: register, log in
 and you land on the dashboard. Set `AUTH_ENABLED=false` to use the demo user instead.

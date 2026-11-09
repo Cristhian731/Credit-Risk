@@ -14,6 +14,7 @@
   <p class="text-muted small mb-3">Access the platform to evaluate loan applications.</p>
 
   <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="mb-3">
       <label for="login-email" class="form-label">Email</label>
       <input type="email" class="form-control" id="login-email" name="email"

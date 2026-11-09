@@ -9,6 +9,7 @@
     <p class="text-muted">Complete all fields to evaluate the loan application.</p>
 
     <form method="post" action="{{ url_for('credit.index') }}" class="row g-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for name in field_order %}
         <div class="col-md-4">
           {% if name in numeric_fields %}

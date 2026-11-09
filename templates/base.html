@@ -53,6 +53,7 @@
             </li>
             <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
               <form method="post" action="{{ url_for('auth.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline-light btn-sm">Log out</button>
               </form>
             </li>

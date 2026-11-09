@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import UniqueConstraint, inspect
 
 from app.extensions import db
 from app.models import Budget, Category, Client, CreditApplication, Transaction, User
@@ -116,9 +116,20 @@ def test_transaction_description_is_optional():
     assert _columns(Transaction)["description"].nullable is True
 
 
-@pytest.mark.parametrize("model, column", [(User, "username"), (User, "email"), (Client, "document_number")])
+@pytest.mark.parametrize("model, column", [(User, "username"), (User, "email")])
 def test_column_is_unique(model, column):
     assert _columns(model)[column].unique is True
+
+
+def test_client_document_is_unique_per_user_only():
+    """The document is unique per user (user_id, document_number), not globally."""
+    assert _columns(Client)["document_number"].unique is not True
+    unique_sets = [
+        [column.name for column in constraint.columns]
+        for constraint in Client.__table__.constraints
+        if isinstance(constraint, UniqueConstraint)
+    ]
+    assert ["user_id", "document_number"] in unique_sets
 
 
 def test_credit_application_uses_credit_form_field_names():

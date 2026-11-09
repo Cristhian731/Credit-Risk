@@ -128,10 +128,15 @@ class Client(db.Model):
     """A customer whose loan applications are evaluated."""
 
     __tablename__ = "clients"
+    # The same document may belong to clients of different users, but a user
+    # cannot register it twice.
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "document_number", name="uq_clients_user_id_document_number"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(120), nullable=False)
-    document_number = db.Column(db.String(30), unique=True, nullable=False)
+    document_number = db.Column(db.String(30), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
