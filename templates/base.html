@@ -18,7 +18,13 @@
   {% set app_links = [
     ('transactions.index', 'Transactions'),
     ('dashboard.index', 'Dashboard'),
-    ('credit.index', 'Credit Evaluation'),
+  ] %}
+  {# Same names and order as ml.schemas.MODEL_NAMES / DISPLAY_NAMES (checked by the route tests).
+     History is not in the menu: it is linked from the credit pages. #}
+  {% set model_links = [
+    ('logistic_regression', 'Logistic Regression'),
+    ('random_forest', 'Random Forest'),
+    ('xgboost', 'XGBoost'),
   ] %}
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top site-navbar">
     <div class="container">
@@ -46,6 +52,17 @@
                    href="{{ url_for(endpoint) }}">{{ label }}</a>
               </li>
             {% endfor %}
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle {% if request.blueprint == 'credit' %}active{% endif %}" href="#" id="credit-menu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Credit Evaluation</a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="credit-menu">
+                <li><a class="dropdown-item" href="{{ url_for('credit.index') }}">New evaluation (official model)</a></li>
+                <li><hr class="dropdown-divider"></li>
+                {% for name, label in model_links %}
+                  <li><a class="dropdown-item" href="{{ url_for('credit.model_detail', name=name) }}">{{ label }}</a></li>
+                {% endfor %}
+                <li><a class="dropdown-item" href="{{ url_for('credit.models') }}">Model Comparison</a></li>
+              </ul>
+            </li>
           {% endif %}
           {% if logged_in %}
             <li class="nav-item ms-lg-2">

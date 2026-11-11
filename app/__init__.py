@@ -4,10 +4,11 @@ import os
 from flask import Flask
 
 from config import config_by_name
+from ml.features import ARTIFACTS_DIR, EXAMPLE_ARTIFACTS_DIR
 
 from .auth.services import auth_enabled, get_current_user
 from .cli import register_cli
-from .credit.services import PredictionService
+from .credit.services import ModelRegistry, PredictionService
 from .errors import register_error_handlers
 from .extensions import csrf, db, migrate
 from .logging_config import configure_logging
@@ -55,6 +56,12 @@ def create_app(config_name=None):
         scaler_path=app.config["CREDIT_SCALER_PATH"],
         approved_max=app.config["CREDIT_APPROVED_MAX_RISK"],
         medium_max=app.config["CREDIT_MEDIUM_MAX_RISK"],
+    )
+    # Trained models (ML phase). Loads nothing at start-up; see ModelRegistry.
+    app.extensions["model_registry"] = ModelRegistry(
+        artifacts_dir=ARTIFACTS_DIR,
+        example_dir=EXAMPLE_ARTIFACTS_DIR,
+        fallback=app.extensions["credit_predictor"],
     )
 
     register_blueprints(app)

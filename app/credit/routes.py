@@ -1,4 +1,4 @@
-"""Credit evaluation routes: customer form and prediction result."""
+"""Credit evaluation routes: customer form, prediction result and model pages."""
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
 from ..auth.services import get_current_user, login_required
@@ -10,7 +10,9 @@ from ..services.repository import (
 )
 from . import bp
 from .forms import CHOICE_FIELDS, FIELD_ORDER, NUMERIC_FIELDS, to_record, validate_client, validate_form
-from .services import RECOMMENDATIONS, get_predictor
+from ml.schemas import MODEL_NAMES
+
+from .services import RECOMMENDATIONS, get_predictor, get_registry
 
 
 def _render_form(form, status=200):
@@ -124,3 +126,27 @@ def result(application_id):
         "recommendation": RECOMMENDATIONS[application["risk_label"]],
     }
     return render_template("credit/result.html", result=result, application=application)
+
+
+@bp.route("/models/")
+@login_required
+def models():
+    """Compare the three candidate models (example data until real artifacts exist)."""
+    return render_template("credit/models.html", catalog=get_registry().catalog())
+
+
+@bp.route("/models/<name>/")
+@login_required
+def model_detail(name):
+    """Metrics of one model. Names outside ml.schemas.MODEL_NAMES answer 404."""
+    if name not in MODEL_NAMES:
+        abort(404)
+    catalog = get_registry().catalog()
+    if name not in catalog["metrics"]:
+        abort(404)
+    return render_template(
+        "credit/model_detail.html",
+        catalog=catalog,
+        metrics=catalog["metrics"][name],
+        is_champion=catalog["manifest"]["champion"] == name,
+    )

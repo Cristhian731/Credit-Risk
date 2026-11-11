@@ -1,0 +1,7 @@
+{# Shown while ml/artifacts/manifest.json does not exist and the pages read ml/artifacts/_example. #}
+{% if catalog.is_example %}
+  <div class="alert alert-warning" role="alert" data-testid="example-banner">
+    <strong>Example data.</strong> These figures are fictitious placeholders, not a real training run.
+    They will be replaced automatically once the trained models are saved in <code>ml/artifacts/</code>.
+  </div>
+{% endif %}

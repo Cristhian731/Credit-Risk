@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Model Comparison &middot; Credit Risk{% endblock %}
+
+{% block content %}
+{% set manifest = catalog.manifest %}
+<div class="container py-4">
+  {% include "credit/_example_banner.html" %}
+
+  <div class="card p-4">
+    <h2 class="fw-bold mb-1">Model Comparison</h2>
+    <p class="text-muted mb-3">
+      Feature set <code>{{ manifest.feature_set }}</code> &middot; version {{ manifest.version }}
+      &middot; trained {{ manifest.trained_at }}
+    </p>
+
+    {# Sprint 2 - owner: web: summary cards (dataset rows, champion, selection rule). #}
+    <p class="mb-3"><strong>Selection rule:</strong> {{ manifest.selection_rule }}</p>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th class="text-end">CV ROC AUC</th>
+            <th class="text-end">CV recall</th>
+            <th class="text-end">Test ROC AUC</th>
+            <th class="text-end">Test recall</th>
+            <th class="text-end">Test precision</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name, m in catalog.metrics.items() %}
+            <tr>
+              <td>
+                <a href="{{ url_for('credit.model_detail', name=name) }}">{{ m.display_name }}</a>
+                {% if name == manifest.champion %}<span class="badge text-bg-success ms-1">Official model</span>{% endif %}
+              </td>
+              <td class="text-end">{{ '%.3f'|format(m.cv.roc_auc[0]) }} &plusmn; {{ '%.3f'|format(m.cv.roc_auc[1]) }}</td>
+              <td class="text-end">{{ '%.3f'|format(m.cv.recall[0]) }} &plusmn; {{ '%.3f'|format(m.cv.recall[1]) }}</td>
+              <td class="text-end">{{ '%.3f'|format(m.test.roc_auc) }}</td>
+              <td class="text-end">{{ '%.3f'|format(m.test.recall) }}</td>
+              <td class="text-end">{{ '%.3f'|format(m.test.precision) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Sprint 2 - owner: web: ROC curves of the three models in one Chart.js chart
+     (data: catalog.metrics[name].roc_curve.fpr / tpr). #}
+  <div class="card p-4 mt-3" data-todo="roc-comparison-chart">
+    <h3 class="h5 fw-bold">ROC curves</h3>
+    <p class="text-muted mb-0">Chart pending.</p>
+  </div>
+
+  {# Sprint 2 - owner: web: grouped bar chart of the CV metrics (mean with std as error bars). #}
+  <div class="card p-4 mt-3" data-todo="cv-metrics-chart">
+    <h3 class="h5 fw-bold">Cross-validation metrics</h3>
+    <p class="text-muted mb-0">Chart pending.</p>
+  </div>
+</div>
+{% endblock %}
