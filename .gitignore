@@ -26,3 +26,6 @@ instance/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Raw datasets (downloaded locally, never committed; see ml/data/README.md)
+ml/data/raw/

@@ -1,0 +1,61 @@
+LoanID,Age,Income,LoanAmount,CreditScore,MonthsEmployed,NumCreditLines,InterestRate,LoanTerm,DTIRatio,Education,EmploymentType,MaritalStatus,HasMortgage,HasDependents,LoanPurpose,HasCoSigner,Default
+SYN0000001,31,118696,147964,494,85,4,2.51,12,0.27,Bachelor's,Full-time,Divorced,Yes,No,Auto,No,0
+SYN0000002,36,33231,81703,381,22,4,16.42,24,0.27,High School,Part-time,Single,Yes,No,Home,No,1
+SYN0000003,47,109131,74342,472,103,4,10.58,48,0.16,High School,Self-employed,Divorced,No,Yes,Home,Yes,0
+SYN0000004,67,59871,80861,490,119,2,15.86,48,0.32,High School,Unemployed,Single,No,No,Auto,No,0
+SYN0000005,69,119593,174878,486,87,2,10.55,24,0.23,PhD,Full-time,Married,Yes,No,Home,Yes,0
+SYN0000006,27,135518,87694,655,44,1,5.38,60,0.8,High School,Part-time,Single,No,No,Business,Yes,0
+SYN0000007,41,48301,69651,831,81,3,13.95,48,0.82,PhD,Self-employed,Married,Yes,Yes,Other,No,0
+SYN0000008,20,18087,108743,378,20,2,22.3,48,0.58,PhD,Unemployed,Married,No,No,Other,Yes,1
+SYN0000009,39,22507,220763,436,24,3,13.45,48,0.23,Bachelor's,Full-time,Divorced,No,Yes,Other,Yes,1
+SYN0000010,65,69117,172496,709,87,2,4.45,24,0.53,Bachelor's,Part-time,Divorced,No,No,Home,Yes,0
+SYN0000011,48,145175,85612,572,17,2,16.05,12,0.17,PhD,Self-employed,Single,Yes,Yes,Business,Yes,0
+SYN0000012,41,99163,164014,666,37,2,13.41,48,0.9,High School,Unemployed,Married,No,Yes,Auto,Yes,0
+SYN0000013,29,74313,10514,751,80,2,11.42,12,0.16,Bachelor's,Full-time,Single,Yes,Yes,Education,Yes,0
+SYN0000014,57,61195,78001,792,72,2,10.63,60,0.56,Master's,Part-time,Married,No,Yes,Home,Yes,0
+SYN0000015,39,43249,172876,516,13,4,23.23,12,0.64,Bachelor's,Self-employed,Single,No,No,Home,Yes,1
+SYN0000016,24,27465,220584,529,4,4,14.39,48,0.3,Bachelor's,Unemployed,Married,Yes,Yes,Other,Yes,1
+SYN0000017,30,128771,66965,535,62,4,9.7,48,0.82,Master's,Full-time,Married,Yes,No,Education,No,0
+SYN0000018,27,42722,225691,549,4,2,15.86,12,0.56,Bachelor's,Part-time,Divorced,No,Yes,Home,No,1
+SYN0000019,57,141767,144231,530,17,1,15.62,12,0.58,Master's,Self-employed,Married,Yes,Yes,Other,Yes,0
+SYN0000020,64,40745,114897,786,84,3,16.96,24,0.64,High School,Unemployed,Single,No,No,Auto,No,0
+SYN0000021,54,71441,24016,454,68,1,3.17,24,0.5,Master's,Full-time,Married,Yes,Yes,Education,No,0
+SYN0000022,35,87433,147401,810,48,1,12.69,60,0.34,Bachelor's,Part-time,Single,No,Yes,Home,Yes,0
+SYN0000023,42,66930,163552,557,101,3,5.26,36,0.5,High School,Self-employed,Single,Yes,No,Education,Yes,0
+SYN0000024,25,73719,39293,776,43,2,13.86,60,0.66,Bachelor's,Unemployed,Single,Yes,Yes,Other,Yes,0
+SYN0000025,48,106350,149841,525,65,2,2.67,36,0.82,Bachelor's,Full-time,Married,Yes,Yes,Home,No,0
+SYN0000026,60,145885,111529,767,105,2,16.81,24,0.79,Master's,Part-time,Married,Yes,Yes,Education,No,0
+SYN0000027,67,143254,70055,586,30,1,8.12,12,0.79,Master's,Self-employed,Single,No,No,Education,Yes,0
+SYN0000028,39,33101,178023,548,61,3,6.46,12,0.87,High School,Unemployed,Married,No,No,Home,Yes,0
+SYN0000029,41,53405,157198,585,14,1,11.55,36,0.68,High School,Full-time,Married,Yes,No,Other,Yes,0
+SYN0000030,41,35817,119309,450,76,2,7.83,12,0.86,High School,Part-time,Divorced,No,Yes,Education,No,0
+SYN0000031,67,83528,90506,656,99,3,10.87,24,0.44,PhD,Self-employed,Divorced,Yes,No,Business,Yes,0
+SYN0000032,44,67606,60098,670,110,3,9.44,48,0.64,PhD,Unemployed,Divorced,Yes,Yes,Education,No,0
+SYN0000033,30,137272,66569,794,49,2,14.91,24,0.12,Master's,Full-time,Married,Yes,No,Business,Yes,0
+SYN0000034,69,80328,134598,654,41,2,12.5,12,0.81,Bachelor's,Part-time,Married,Yes,Yes,Other,No,0
+SYN0000035,28,103060,70325,512,68,2,14.82,60,0.89,High School,Self-employed,Married,No,No,Auto,No,0
+SYN0000036,53,63972,69812,776,45,4,12.03,36,0.45,High School,Unemployed,Single,No,No,Education,Yes,0
+SYN0000037,33,49769,65623,646,98,2,13.3,12,0.43,High School,Full-time,Divorced,No,No,Home,Yes,0
+SYN0000038,51,81049,158112,806,12,4,9.63,36,0.34,PhD,Part-time,Married,Yes,No,Auto,No,0
+SYN0000039,52,93654,12608,649,53,4,13.59,48,0.84,Bachelor's,Self-employed,Married,Yes,Yes,Business,Yes,0
+SYN0000040,54,53819,18181,583,58,3,5.39,36,0.37,PhD,Unemployed,Married,No,No,Home,No,0
+SYN0000041,18,50351,93653,479,7,1,22.16,12,0.7,Master's,Full-time,Single,Yes,Yes,Auto,Yes,1
+SYN0000042,55,117747,34986,738,37,4,13.19,36,0.23,Bachelor's,Part-time,Single,No,Yes,Other,Yes,0
+SYN0000043,44,105470,103384,653,101,2,3.22,24,0.18,High School,Self-employed,Divorced,Yes,Yes,Education,No,0
+SYN0000044,67,78571,23076,709,92,3,2.2,48,0.76,Bachelor's,Unemployed,Married,No,No,Auto,No,0
+SYN0000045,36,126180,141772,783,44,4,9.44,60,0.31,Master's,Full-time,Single,No,No,Auto,No,0
+SYN0000046,61,109997,104349,622,13,4,15.62,24,0.49,High School,Part-time,Married,No,No,Other,No,0
+SYN0000047,60,31330,140430,547,20,2,13.52,48,0.54,Master's,Self-employed,Divorced,No,No,Business,Yes,0
+SYN0000048,20,34283,138090,507,22,2,15.98,60,0.4,High School,Unemployed,Married,No,No,Business,No,1
+SYN0000049,44,62951,65434,511,102,2,7.05,60,0.86,Master's,Full-time,Single,Yes,No,Education,No,0
+SYN0000050,31,139134,55886,601,39,3,4.87,12,0.67,Master's,Part-time,Married,Yes,Yes,Other,No,0
+SYN0000051,69,46551,172213,835,72,1,15.96,60,0.33,PhD,Self-employed,Married,No,Yes,Home,No,0
+SYN0000052,55,44953,22129,655,72,1,11.23,12,0.22,High School,Unemployed,Single,Yes,Yes,Other,No,0
+SYN0000053,63,108135,167114,565,109,4,9.21,48,0.34,PhD,Full-time,Married,Yes,Yes,Auto,Yes,0
+SYN0000054,41,116563,26282,530,40,2,10.83,24,0.1,PhD,Part-time,Divorced,No,No,Home,Yes,0
+SYN0000055,43,122662,79112,809,68,1,13.0,36,0.73,Master's,Self-employed,Married,Yes,Yes,Auto,No,0
+SYN0000056,34,39359,20633,534,111,3,11.52,60,0.84,PhD,Unemployed,Single,No,No,Business,No,0
+SYN0000057,34,50388,209445,524,2,1,23.56,36,0.58,Bachelor's,Full-time,Single,Yes,Yes,Education,Yes,1
+SYN0000058,36,91669,141043,783,66,3,4.9,60,0.45,PhD,Part-time,Single,No,No,Business,No,0
+SYN0000059,45,117835,32420,532,52,4,13.1,36,0.63,PhD,Self-employed,Divorced,Yes,No,Home,No,0
+SYN0000060,41,72372,35388,845,61,1,12.52,60,0.47,Bachelor's,Unemployed,Single,No,No,Business,Yes,0
