@@ -22,7 +22,9 @@ Contract:
 Each ``save_*``, ``update_*`` and ``delete_*`` function commits; if anything fails the session is rolled back
 and the error is raised again.
 """
-from decimal import Decimal
+import unicodedata
+from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -353,3 +355,124 @@ def transaction_totals(user_id):
     income = Decimal(str(sums.get("income", 0))).quantize(cents)
     expense = Decimal(str(sums.get("expense", 0))).quantize(cents)
     return {"income": income, "expense": expense, "balance": income - expense}
+
+
+# ---------------------------------------------------------------------------
+# Link between the finance module and the credit evaluation (calculated on read, never stored).
+# ---------------------------------------------------------------------------
+
+INCOME_MONTHS = 3
+LOOKBACK_MONTHS = 12
+# Expense categories whose name contains one of these words (ignoring case and accents) are
+# suggested as debt payments. The user adjusts the selection; nothing is stored.
+DEBT_KEYWORDS = ("loan", "credit", "debt", "prestamo", "tarjeta", "deuda")
+
+
+def _plain(text):
+    """Lowercase text without accents, to compare category names."""
+    return "".join(
+        char for char in unicodedata.normalize("NFKD", text.lower()) if not unicodedata.combining(char)
+    )
+
+
+def is_debt_category_name(name):
+    """True if a category name suggests a debt payment (loan, credit, debt, prestamo, tarjeta, deuda)."""
+    return any(word in _plain(name) for word in DEBT_KEYWORDS)
+
+
+def _month_shift(first_day, months):
+    """First day of the month ``months`` months after ``first_day`` (negative: before)."""
+    index = first_day.year * 12 + (first_day.month - 1) + months
+    return date(index // 12, index % 12 + 1, 1)
+
+
+def finance_summary_for_credit(user_id, debt_category_ids=None, today=None):
+    """Monthly income and debt-to-income ratio of a user, calculated from their transactions.
+
+    Nothing is stored: the values are calculated every time they are read.
+
+    * Monthly income: the average of the monthly income totals of the (up to) 3 most recent
+      COMPLETE calendar months that have at least one income, looking back 12 months from the
+      current month. The current month is never used.
+    * Debt payments: the expenses of the chosen categories, averaged over those same months.
+    * DTI: debt payments divided by the monthly income, in percent (capped at 100, which is
+      what the credit form accepts).
+
+    Args:
+        user_id: Only this user's transactions and categories are read.
+        debt_category_ids: Ids of expense categories that are debt payments. Ids that are not the
+            user's expense categories are ignored. ``None`` selects the suggested categories
+            (``is_debt_category_name``); an empty list selects none.
+        today: Reference date (default: today), to make the calculation testable.
+
+    Returns:
+        A dict with ``monthly_income`` (Decimal or None), ``months`` (the months used, newest
+        first, as ``{"key": "2026-10", "label": "October 2026"}``), ``debt_monthly``, ``dti_percent``
+        (None without income or without selected categories), ``dti_capped``,
+        ``expense_categories`` (``id``, ``name``, ``suggested``, ``selected``) and ``selected_names``.
+    """
+    today = today or date.today()
+    current = today.replace(day=1)
+    window_start = _month_shift(current, -LOOKBACK_MONTHS)
+    cents = Decimal("0.01")
+
+    income_by_month = {}
+    for when, amount in db.session.execute(
+        db.select(Transaction.date, Transaction.amount).where(
+            Transaction.user_id == user_id,
+            Transaction.type == "income",
+            Transaction.date >= window_start,
+            Transaction.date < current,
+        )
+    ):
+        key = (when.year, when.month)
+        income_by_month[key] = income_by_month.get(key, Decimal(0)) + Decimal(str(amount))
+
+    used = sorted(income_by_month, reverse=True)[:INCOME_MONTHS]
+    monthly_income = None
+    if used:
+        monthly_income = (sum(income_by_month[key] for key in used) / len(used)).quantize(cents, ROUND_HALF_UP)
+
+    categories = [
+        {"id": row.id, "name": row.name, "suggested": is_debt_category_name(row.name)}
+        for row in db.session.execute(
+            db.select(Category).where(Category.user_id == user_id, Category.type == "expense").order_by(Category.name)
+        ).scalars()
+    ]
+    own_ids = {item["id"] for item in categories}
+    if debt_category_ids is None:
+        selected = {item["id"] for item in categories if item["suggested"]}
+    else:
+        selected = {int(value) for value in debt_category_ids} & own_ids
+    for item in categories:
+        item["selected"] = item["id"] in selected
+
+    debt_monthly, dti_percent, dti_capped = None, None, False
+    if used and selected:
+        total = Decimal(0)
+        for when, amount in db.session.execute(
+            db.select(Transaction.date, Transaction.amount).where(
+                Transaction.user_id == user_id,
+                Transaction.type == "expense",
+                Transaction.category_id.in_(selected),
+                Transaction.date >= window_start,
+                Transaction.date < current,
+            )
+        ):
+            if (when.year, when.month) in used:
+                total += Decimal(str(amount))
+        debt_monthly = (total / len(used)).quantize(cents, ROUND_HALF_UP)
+        if monthly_income:
+            ratio = (debt_monthly / monthly_income * 100).quantize(Decimal("0.1"), ROUND_HALF_UP)
+            dti_capped = ratio > 100
+            dti_percent = float(min(ratio, Decimal(100)))
+
+    return {
+        "monthly_income": monthly_income,
+        "months": [{"key": f"{y}-{m:02d}", "label": date(y, m, 1).strftime("%B %Y")} for y, m in used],
+        "debt_monthly": debt_monthly,
+        "dti_percent": dti_percent,
+        "dti_capped": dti_capped,
+        "expense_categories": categories,
+        "selected_names": [item["name"] for item in categories if item["selected"]],
+    }
