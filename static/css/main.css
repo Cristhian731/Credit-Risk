@@ -39,3 +39,9 @@ section[id],
   background: var(--cr-navy);
   color: var(--cr-footer-text);
 }
+
+/* Fixed-height box so Chart.js can size its canvas (model tabs). */
+.chart-box {
+  position: relative;
+  height: 320px;
+}

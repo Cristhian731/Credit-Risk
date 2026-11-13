@@ -1,0 +1,11 @@
+{# Tab "XGBoost". Owner: Alejandro. Metrics, charts and the prediction form come from the shared
+   macros and read the JSON artifacts; the owner only writes the "About this algorithm" text. #}
+{% from "credit/models/_macros.html" import model_panel, predict_form, about_section %}
+{{ model_panel("xgboost", catalog) }}
+{{ about_section(
+     "xgboost", "Alejandro",
+     "XGBoost builds decision trees one after another, each one correcting the errors of the previous ones (gradient boosting). "
+     "It is very effective on tabular data and handles class imbalance with a positive class weight, but it has more hyperparameters to tune."
+   ) }}
+{{ predict_form("xgboost", catalog.metrics.xgboost.display_name, active, form, result,
+                field_order, numeric_fields, choice_fields) }}

@@ -2,15 +2,17 @@
 
 The classifier must expose ``predict_proba`` with class 1 = "default / not viable".
 """
+import gc
 import logging
 import os
+import threading
 
 import joblib
 import numpy as np
 from flask import current_app
 
-from ml.features import FEATURE_ORDER, MANIFEST_FILENAME, METRICS_FILENAME
-from ml.schemas import load_json
+from ml.features import FEATURE_ORDER, MANIFEST_FILENAME, METRICS_FILENAME, MODEL_FILENAME, to_model_frame
+from ml.schemas import CHAMPION_AUC_MARGIN, MODEL_NAMES, load_json, model_version_tag
 
 log = logging.getLogger(__name__)
 
@@ -79,17 +81,14 @@ class PredictionService:
 class ModelRegistry:
     """Access point to the trained models described by ``ml/artifacts/manifest.json``.
 
-    Behaviour by phase (see docs/ML_PHASE.md):
-
-    - Today (no ``manifest.json``): ``predict`` delegates to the placeholder
+    - Without ``manifest.json``: ``predict`` delegates to the placeholder
       ``PredictionService`` unchanged, and ``catalog`` serves the example
       metrics in ``ml/artifacts/_example`` so the model pages can be built.
-    - Sprint 1: with a real manifest, ``predict(data)`` uses the champion.
-      The model file is loaded lazily on the first prediction, never at
-      start-up.
-    - Sprint 2: ``predict(data, model=name)`` loads any of the three models
-      on demand and keeps **at most one model in memory at a time**: loading
-      another one releases the previous one (Render free plan: 512 MB).
+    - With a real manifest: ``predict(data)`` uses the champion and
+      ``predict(data, model=name)`` any of the three models. A model file is
+      loaded on demand, never at start-up, and **at most one model stays in
+      memory**: loading another one releases the previous one (Render free
+      plan: 512 MB).
 
     The model pages only read JSON, so they never load a model file.
     """
@@ -104,8 +103,9 @@ class ModelRegistry:
         self.artifacts_dir = artifacts_dir
         self.example_dir = example_dir
         self.fallback = fallback
-        # (model name, fitted pipeline) of the only model kept in memory, or None.
+        # (model name, fitted pipeline, artifact version) of the only model kept in memory, or None.
         self._loaded = None
+        self._lock = threading.Lock()
 
     @property
     def has_trained_models(self):
@@ -117,14 +117,20 @@ class ModelRegistry:
         """Name of the model currently in memory, or None."""
         return self._loaded[0] if self._loaded else None
 
+    def _read(self, directory, filename):
+        path = os.path.join(directory, filename)
+        return load_json(path) if os.path.exists(path) else None
+
     def catalog(self):
         """Return the manifest and every model's metrics, for the model pages.
 
         Returns:
-            ``{"manifest": dict, "metrics": {name: dict}, "is_example": bool}``.
+            ``{"manifest", "metrics", "is_example", "experiments", "overfitting"}``.
             ``is_example`` is True while there are no trained models and the
             content comes from the example folder. Metrics follow
-            ``manifest["models"]`` order.
+            ``manifest["models"]`` order. ``experiments`` (every hyperparameter
+            run) and ``overfitting`` (train vs. CV vs. test) are the content of
+            their JSON files, or None when the folder does not have them.
         """
         is_example = not self.has_trained_models
         directory = self.example_dir if is_example else self.artifacts_dir
@@ -133,7 +139,51 @@ class ModelRegistry:
             name: load_json(os.path.join(directory, name, METRICS_FILENAME))
             for name in manifest["models"]
         }
-        return {"manifest": manifest, "metrics": metrics, "is_example": is_example}
+        return {
+            "manifest": manifest,
+            "metrics": metrics,
+            "is_example": is_example,
+            "experiments": self._read(directory, "experiments.json"),
+            "overfitting": self._read(directory, "overfitting.json"),
+        }
+
+    def selection_summary(self, catalog=None):
+        """Explain the champion rule with the numbers of the catalog (for the comparison page).
+
+        Returns:
+            One dict per model, in catalog order: ``name``, ``display_name``,
+            ``cv_roc_auc``, ``gap`` (distance to the best CV ROC AUC), ``tied`` (closer than
+            ``CHAMPION_AUC_MARGIN``), ``cv_recall`` and ``is_champion``.
+        """
+        catalog = catalog or self.catalog()
+        auc = {name: m["cv"]["roc_auc"][0] for name, m in catalog["metrics"].items()}
+        best = max(auc.values())
+        return [
+            {
+                "name": name,
+                "display_name": m["display_name"],
+                "cv_roc_auc": auc[name],
+                "gap": best - auc[name],
+                "tied": best - auc[name] < CHAMPION_AUC_MARGIN,
+                "cv_recall": m["cv"]["recall"][0],
+                "is_champion": name == catalog["manifest"]["champion"],
+            }
+            for name, m in catalog["metrics"].items()
+        ]
+
+    def _model(self, name):
+        """Return ``(pipeline, artifact version)`` of a model, loading it if it is not the one in memory."""
+        with self._lock:
+            if self._loaded and self._loaded[0] == name:
+                return self._loaded[1], self._loaded[2]
+            path = os.path.join(self.artifacts_dir, name, MODEL_FILENAME)
+            if not os.path.exists(path):
+                raise RuntimeError(f"The model file of {name} is not available.")
+            version = load_json(os.path.join(self.artifacts_dir, MANIFEST_FILENAME))["version"]
+            self._loaded = None  # release the previous model before loading the next one
+            gc.collect()
+            self._loaded = (name, joblib.load(path), version)
+            return self._loaded[1], self._loaded[2]
 
     def predict(self, data, model=None):
         """Evaluate one application.
@@ -142,18 +192,36 @@ class ModelRegistry:
             data: Encoded form values keyed by name, as returned by
                 ``app.credit.forms.validate_form``.
             model: None for the official model (the champion), or one of
-                ``ml.schemas.MODEL_NAMES`` (Sprint 2).
+                ``ml.schemas.MODEL_NAMES``.
 
         Returns:
             Same shape as ``PredictionService.predict``: ``label``,
-            ``risk_percent`` (risk score 0-100) and ``recommendation``.
+            ``risk_percent`` (risk score 0-100) and ``recommendation``. With trained
+            models it also has ``model`` (name) and ``model_version`` in the
+            ``<code>@<version>`` format that is stored with the evaluation.
 
         Raises:
             RuntimeError: If no model is available.
+            ValueError: If ``model`` is not one of the model names.
         """
+        if model is not None and model not in MODEL_NAMES:
+            raise ValueError(f"Unknown model: {model}")
         if model is None and not self.has_trained_models:
             return self.fallback.predict(data)
-        raise NotImplementedError("Sprint 1 - owner: ml (trained models); Sprint 2 for model=<name>")
+        if not self.has_trained_models:
+            raise RuntimeError("The trained models are not available.")
+
+        name = model or load_json(os.path.join(self.artifacts_dir, MANIFEST_FILENAME))["champion"]
+        pipeline, version = self._model(name)
+        risk = float(pipeline.predict_proba(to_model_frame(data))[0][1])
+        label = self.fallback.classify(risk)
+        return {
+            "label": label,
+            "risk_percent": round(risk * 100, 1),
+            "recommendation": RECOMMENDATIONS[label],
+            "model": name,
+            "model_version": model_version_tag(name, version),
+        }
 
 
 def get_predictor():

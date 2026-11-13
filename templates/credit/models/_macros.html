@@ -1,0 +1,217 @@
+{# Shared blocks of the model tabs. Each model partial (_logistic_regression.html, _random_forest.html,
+   _xgboost.html) calls model_panel() and then adds its own "About this algorithm" section.
+   Everything here is read from the JSON artifacts through catalog (see ModelRegistry.catalog). #}
+
+{% macro metric_value(pair) %}{{ '%.3f'|format(pair[0]) }} &plusmn; {{ '%.3f'|format(pair[1]) }}{% endmacro %}
+
+{% macro metric_label(name) %}{{ 'ROC AUC' if name == 'roc_auc' else name|capitalize }}{% endmacro %}
+
+{# Prediction form of one tab: sends the application to this model only. Nothing is saved. #}
+{% macro predict_form(name, display_name, active, form, result, field_order, numeric_fields, choice_fields) %}
+<div class="card p-4 mt-3" data-testid="predict-{{ name }}">
+  <h3 class="h5 fw-bold">Try {{ display_name }}</h3>
+  <p class="text-muted">
+    Predict one application with this model. Amounts are in US dollars (USD) and the income is the
+    <strong>monthly</strong> income. The result is not saved in the evaluation history.
+  </p>
+  {% if result and active == name %}
+    {% set color = {'Approved': 'success', 'Medium Risk': 'warning', 'High Risk': 'danger'}[result.label] %}
+    <div class="alert alert-{{ color }}" role="status" data-testid="predict-result-{{ name }}">
+      <strong>{{ result.label }}</strong> &middot; estimated default risk {{ result.risk_percent }}%.
+      <div class="small mt-1">{{ result.recommendation }}</div>
+    </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('credit.model_predict', name=name) }}" class="row g-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for field in field_order %}
+      <div class="col-md-4">
+        {% if field in numeric_fields %}
+          {% set label, _type, min, max, step = numeric_fields[field] %}
+          <label for="{{ name }}-{{ field }}" class="form-label">{{ label }}</label>
+          <input type="number" class="form-control" id="{{ name }}-{{ field }}" name="{{ field }}"
+                 min="{{ min }}" max="{{ max }}" step="{{ step }}"
+                 value="{{ form.get(field, '') if active == name else '' }}" required>
+        {% else %}
+          {% set label, options = choice_fields[field] %}
+          <label for="{{ name }}-{{ field }}" class="form-label">{{ label }}</label>
+          <select class="form-select" id="{{ name }}-{{ field }}" name="{{ field }}" required>
+            <option value="" disabled {% if active != name or not form.get(field) %}selected{% endif %}>Select...</option>
+            {% for value, text in options %}
+              <option value="{{ value }}" {% if active == name and form.get(field) == value %}selected{% endif %}>{{ text }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <div class="col-12 text-end">
+      <button type="submit" class="btn btn-primary px-4">Predict with {{ display_name }}</button>
+    </div>
+  </form>
+</div>
+{% endmacro %}
+
+{# Metrics, charts, hyperparameters, experiments and overfitting of one model. #}
+{% macro model_panel(name, catalog) %}
+{% set m = catalog.metrics[name] %}
+{% set cm = m.confusion_matrix %}
+{% set is_champion = catalog.manifest.champion == name %}
+<div class="card p-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="fw-bold mb-0">
+      {{ m.display_name }}
+      {% if is_champion %}<span class="badge text-bg-success fs-6 align-middle">Official model</span>{% endif %}
+    </h2>
+    <a href="#comparison" class="btn btn-outline-primary" data-tab-link="comparison">Model Comparison</a>
+  </div>
+  <p class="text-muted mb-3">Model version {{ m.model_version }}</p>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <h3 class="h6 fw-bold">Cross-validation (train split, 5 folds)</h3>
+      <table class="table table-sm mb-0">
+        <tbody>
+          {% for metric, pair in m.cv.items() %}
+            <tr><th class="fw-normal">{{ metric_label(metric) }}</th><td class="text-end">{{ metric_value(pair) }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="col-md-6">
+      <h3 class="h6 fw-bold">Test split (20 %, reported only)</h3>
+      <table class="table table-sm mb-0">
+        <tbody>
+          {% for metric, value in m.test.items() %}
+            <tr><th class="fw-normal">{{ metric_label(metric) }}</th><td class="text-end">{{ '%.3f'|format(value) }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-0">
+  <div class="col-lg-6">
+    <div class="card p-4 h-100">
+      <h3 class="h5 fw-bold">Confusion matrix (test)</h3>
+      <table class="table table-bordered text-center mb-0">
+        <thead><tr><th></th><th>Predicted no default</th><th>Predicted default</th></tr></thead>
+        <tbody>
+          <tr><th>Actual no default</th><td>{{ '{:,}'.format(cm[0][0]) }}</td><td>{{ '{:,}'.format(cm[0][1]) }}</td></tr>
+          <tr><th>Actual default</th><td>{{ '{:,}'.format(cm[1][0]) }}</td><td>{{ '{:,}'.format(cm[1][1]) }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card p-4 h-100">
+      <h3 class="h5 fw-bold">ROC curve (test)</h3>
+      <div class="chart-box"><canvas id="roc-chart-{{ name }}" aria-label="ROC curve of {{ m.display_name }}" role="img"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-0">
+  <div class="col-lg-6">
+    <div class="card p-4 h-100">
+      <h3 class="h5 fw-bold">Feature importance</h3>
+      <div class="chart-box"><canvas id="importance-chart-{{ name }}" aria-label="Feature importance of {{ m.display_name }}" role="img"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card p-4 h-100">
+      <h3 class="h5 fw-bold">Selected hyperparameters</h3>
+      {# The searched hyperparameters of the best run, plus how the class imbalance is handled. #}
+      {% set best_run = (catalog.experiments.models[name].runs|selectattr('selected')|first) if catalog.experiments else none %}
+      <table class="table table-sm mb-2" data-testid="params-{{ name }}">
+        <tbody>
+          {% if best_run %}
+            {% for key, value in best_run.params.items() %}
+              <tr><th class="fw-normal"><code>{{ key }}</code></th><td class="text-end">{{ value }}</td></tr>
+            {% endfor %}
+          {% endif %}
+          {% for key in ['class_weight', 'scale_pos_weight'] if key in m.params and (not best_run or key not in best_run.params) %}
+            <tr><th class="fw-normal"><code>{{ key }}</code></th><td class="text-end">{{ m.params[key] }}</td></tr>
+          {% endfor %}
+          {% if not best_run %}
+            {% for key, value in m.params.items() if value is not none %}
+              <tr><th class="fw-normal"><code>{{ key }}</code></th><td class="text-end">{{ value }}</td></tr>
+            {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+      <details class="mb-3">
+        <summary class="small text-muted">All classifier parameters</summary>
+        <table class="table table-sm mt-2 mb-0">
+          <tbody>
+            {% for key, value in m.params.items() %}
+              <tr><th class="fw-normal"><code>{{ key }}</code></th><td class="text-end">{{ value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+      {% set fit = catalog.overfitting.models[name] if catalog.overfitting else none %}
+      {% if fit %}
+        <h3 class="h6 fw-bold">Overfitting check (ROC AUC)</h3>
+        <table class="table table-sm mb-0" data-testid="overfitting-{{ name }}">
+          <tbody>
+            <tr><th class="fw-normal">Train</th><td class="text-end">{{ '%.4f'|format(fit.train_roc_auc) }}</td></tr>
+            <tr><th class="fw-normal">Cross-validation</th><td class="text-end">{{ '%.4f'|format(fit.cv_roc_auc) }}</td></tr>
+            <tr><th class="fw-normal">Test</th><td class="text-end">{{ '%.4f'|format(fit.test_roc_auc) }}</td></tr>
+            <tr><th class="fw-normal">Train &minus; CV</th><td class="text-end">{{ '%+.4f'|format(fit.train_minus_cv) }}</td></tr>
+          </tbody>
+        </table>
+        <p class="small mt-2 mb-0">
+          {% if fit.overfit %}
+            <span class="badge text-bg-warning">Overfitting</span> the train score is more than {{ catalog.overfitting.threshold }} above the cross-validated score.
+          {% else %}
+            <span class="badge text-bg-success">No overfitting</span> the train score is within {{ catalog.overfitting.threshold }} of the cross-validated score.
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% set experiment = catalog.experiments.models[name] if catalog.experiments else none %}
+{% if experiment %}
+  <div class="card p-4 mt-3" data-testid="runs-{{ name }}">
+    <h3 class="h5 fw-bold">Hyperparameter search ({{ experiment.n_candidates }} runs, {{ experiment.search_seconds }} s)</h3>
+    <p class="text-muted small">
+      Each run is a combination evaluated with 5-fold cross-validation on the train split only.
+      The run with the best mean ROC AUC (highlighted) is the model that was trained and evaluated on the test split.
+    </p>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th><th>Hyperparameters</th>
+            <th class="text-end">CV ROC AUC</th><th class="text-end">CV recall</th><th class="text-end">Fit time per fold (s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in experiment.runs %}
+            <tr class="{{ 'table-success' if run.selected }}">
+              <td>{{ run.run }}</td>
+              <td><code>{% for key, value in run.params.items() %}{{ key }}={{ value }}{{ ', ' if not loop.last }}{% endfor %}</code></td>
+              <td class="text-end">{{ metric_value(run.cv.roc_auc) }}</td>
+              <td class="text-end">{{ metric_value(run.cv.recall) }}</td>
+              <td class="text-end">{{ run.fit_seconds }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endmacro %}
+
+{# "About this algorithm": every owner replaces the TODO text with their own explanation. #}
+{% macro about_section(name, owner, base_text) %}
+<div class="card p-4 mt-3" data-testid="about-{{ name }}">
+  <h3 class="h5 fw-bold">About this algorithm</h3>
+  <p><span class="badge text-bg-warning me-1">TODO</span><strong>Owner: {{ owner }}.</strong>
+     Replace this base text with your own explanation (how it works, why it was chosen, strengths,
+     limits and what its hyperparameters do).</p>
+  <p class="mb-0">{{ base_text }}</p>
+</div>
+{% endmacro %}

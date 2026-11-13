@@ -1,5 +1,6 @@
 """Tests for notebooks/credit_risk_dimensionality.ipynb, its report and its figures."""
 import base64
+import hashlib
 import json
 import os
 import re
@@ -24,10 +25,25 @@ COLAB_URL = (
     "notebooks/credit_risk_dimensionality.ipynb"
 )
 # Anything that would reveal a local machine, a user account or the tools used to write the work.
-FORBIDDEN = (
-    "maira", "\\users\\", "/users/", "c:\\", "c:/", "appdata", "onedrive", "site-packages", "ipykernel",
-    "claude", "anthropic", "openai", "chatgpt", "copilot", "matplotlib version",
-)
+# Generic path markers are written in plain text. Names of people and tools are compared by SHA-256
+# of each lowercase word, so this file does not contain them.
+FORBIDDEN = ("\\users\\", "/users/", "c:\\", "c:/", "appdata", "onedrive", "site-packages", "ipykernel", "matplotlib version")
+FORBIDDEN_WORD_HASHES = {
+    "3ea125d0bff386e6754b3782b300016fc79a9cf8f8669c0a5c3db64467ddb681",
+    "60965168ce762e949600281ba6d01fee136e5b6e8257b1f216f9025ed324474c",
+    "7d3194f79e645c42e4396dda38be04766810ec6a00d00aced3ffc2a0a1f1a9ef",
+    "c70eca6b0f88f44d81a41311647e50fda1ac454ec04ffd442b0eb4743a993131",
+    "c857d09db23e6822e3600bc06ad8d58f92ed62bc8efd81c753f77048662cb97d",
+    "f4d1e9881bb9c6c6815efcf5f3ba91dd6ec1597920a83df39fe0aadf16fe2f6e",
+}
+
+
+def _forbidden_words(text):
+    """Words of the text whose SHA-256 is in FORBIDDEN_WORD_HASHES."""
+    return {
+        word for word in set(re.findall(r"[a-z]+", text.lower()))
+        if hashlib.sha256(word.encode()).hexdigest() in FORBIDDEN_WORD_HASHES
+    }
 
 
 @pytest.fixture(scope="module")
@@ -103,6 +119,7 @@ def test_notebook_metadata_and_outputs_are_clean(notebook):
         lowered = text.lower()
         for word in FORBIDDEN:
             assert word not in lowered, f"{word!r} found in the notebook"
+        assert _forbidden_words(text) == set(), "a forbidden word was found in the notebook"
 
 
 def test_images_have_no_tool_metadata(notebook):

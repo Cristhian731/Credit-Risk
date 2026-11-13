@@ -19,6 +19,38 @@ DISPLAY_NAMES = {
     "xgboost": "XGBoost",
 }
 
+# Short codes used to store which model made a prediction: credit_applications.model_version
+# is "<code>@<manifest.version>", for example "lr@2026-11-13.1". The column holds 30 characters,
+# so the codes stay short. Screens always show DISPLAY_NAMES, never the code.
+MODEL_CODES = {
+    "logistic_regression": "lr",
+    "random_forest": "rf",
+    "xgboost": "xgb",
+}
+
+# Models whose mean CV ROC AUC is less than this below the best one are tied; among them the
+# higher mean CV recall (class 1) wins. Used by ml.train and shown on the comparison page.
+CHAMPION_AUC_MARGIN = 0.01
+
+
+def model_version_tag(model_name, version):
+    """Return the value stored in credit_applications.model_version, e.g. ``lr@2026-11-13.1``."""
+    return f"{MODEL_CODES[model_name]}@{version}"
+
+
+def parse_model_version_tag(tag):
+    """Split a stored ``model_version`` into ``(model name, version)``.
+
+    Returns ``(None, None)`` when the value is empty or does not have the ``code@version`` format
+    (evaluations made before the trained models existed have no model version).
+    """
+    code, separator, version = (tag or "").partition("@")
+    names = {value: name for name, value in MODEL_CODES.items()}
+    if not separator or code not in names:
+        return None, None
+    return names[code], version
+
+
 CV_METRICS = ("roc_auc", "recall", "precision", "f1")
 TEST_METRICS = ("roc_auc", "recall", "precision", "f1", "accuracy")
 

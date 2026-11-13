@@ -1,0 +1,11 @@
+{# Tab "Random Forest". Owner: Harrison. Metrics, charts and the prediction form come from the shared
+   macros and read the JSON artifacts; the owner only writes the "About this algorithm" text. #}
+{% from "credit/models/_macros.html" import model_panel, predict_form, about_section %}
+{{ model_panel("random_forest", catalog) }}
+{{ about_section(
+     "random_forest", "Harrison",
+     "A random forest averages many decision trees trained on random subsets of the rows and the features. "
+     "It captures non-linear relations and interactions and is robust to outliers, at the cost of a bigger model that is harder to explain."
+   ) }}
+{{ predict_form("random_forest", catalog.metrics.random_forest.display_name, active, form, result,
+                field_order, numeric_fields, choice_fields) }}

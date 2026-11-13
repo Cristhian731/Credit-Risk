@@ -164,21 +164,50 @@ recall, so it is the champion.
 ### ModelRegistry (memory on Render free plan: 512 MB)
 
 - Created at start-up but loads **no** model file then.
-- Sprint 1: `predict(data)` loads the champion lazily on the first prediction and keeps it.
-- Sprint 2: `predict(data, model=name)` loads any of the three models on demand and keeps
-  **at most one model in memory at a time**; loading another model releases the previous one.
-- The model pages use `catalog()`, which only reads JSON.
-- Same output as `PredictionService.predict`: `label`, `risk_percent`, `recommendation`.
+- `predict(data)` uses the champion of `manifest.json`; `predict(data, model=name)` uses any of the
+  three models. A model file is loaded on demand, and **at most one model is kept in memory at a
+  time**: loading another model releases the previous one. Without a manifest, `predict(data)`
+  falls back to the placeholder model.
+- The model pages use `catalog()` and `selection_summary()`, which only read JSON.
+- Same output as `PredictionService.predict` (`label`, `risk_percent`, `recommendation`) plus
+  `model` and `model_version` when a trained model answered. The label uses the thresholds of
+  `config.py` (0.33 / 0.66) on the default probability.
+
+### `credit_applications.model_version`
+
+The column already exists (`String(30)`, nullable), so there is no schema change. It stores which
+model made the prediction as `<code>@<manifest.version>`, with the codes of `ml.schemas.MODEL_CODES`:
+
+| Model | Code | Example |
+|---|---|---|
+| `logistic_regression` | `lr` | `lr@2026-11-13.1` |
+| `random_forest` | `rf` | `rf@2026-11-13.1` |
+| `xgboost` | `xgb` | `xgb@2026-11-13.1` |
+
+Evaluations made with the placeholder model keep `NULL`. The result page and the history show the
+full name (`DISPLAY_NAMES`) and the version, never the code. A test checks that every code with
+the manifest version fits the column length read from `app/models.py`.
 
 ### Web pages
 
-- `/credit/models/` (comparison) and `/credit/models/<name>/` (one model), both
-  `login_required`; an unknown name answers 404.
-- Navbar: the **Credit Evaluation** menu has *New evaluation (official model)*, *Logistic
-  Regression*, *Random Forest*, *XGBoost* and *Model Comparison*. History is not in the menu;
-  it stays linked from the credit pages.
-- Template blocks marked `Sprint 2 - owner: web` (and `data-todo` attributes) are where the
-  Chart.js charts go.
+- `/credit/models/` is **one page with four Bootstrap tabs**: Logistic Regression, Random Forest,
+  XGBoost and Comparison. The tab id is the model name (or `comparison`), so `/credit/models/#xgboost`
+  opens the XGBoost tab. The old `/credit/models/<name>/` redirects to its tab; an unknown name
+  answers 404. All pages are `login_required`.
+- Each model tab shows, from the JSON artifacts: CV and test metrics, confusion matrix, ROC curve
+  and feature importance (Chart.js), selected hyperparameters, every run of `experiments.json`,
+  the overfitting check and a form that predicts with **that** model (`POST
+  /credit/models/<name>/predict`; the result is not saved in the history).
+- The Comparison tab has the CV and test table, the overlaid ROC curves, the CV metrics chart and
+  the explanation of how the champion was chosen, including the tie-break.
+- Navbar: the **Credit Evaluation** menu has *New evaluation (official model)* and one link per
+  tab (`/credit/models/#logistic_regression`, `#random_forest`, `#xgboost`, `#comparison`).
+  History is not in the menu; it stays linked from the credit pages.
+- Each model has its own partial in `templates/credit/models/` (`_logistic_regression.html`,
+  `_random_forest.html`, `_xgboost.html`). The shared blocks are in `_macros.html`. Every owner
+  replaces the base text of **About this algorithm** (marked `TODO`) in their partial.
+- The charts are drawn by `static/js/model_charts.js` from the JSON embedded in the page.
+- The credit form says that amounts are in USD and that the income is the **monthly** income.
 
 ## Ownership
 
@@ -186,7 +215,7 @@ recall, so it is the champion.
 |---|---|---|
 | data | Teammate A | `ml/dataset.py`, `ml/evaluate.py`, `notebooks/01_eda.ipynb`, CRISP-DM section of the report; tests `test_ml_dataset.py`, `test_ml_evaluate.py` |
 | ml | Cristhian | `ml/features.py` (`to_model_frame`), `ml/pipelines.py`, `ml/train.py`, `app/credit/services.py` (`ModelRegistry`), PR reviews; tests `test_ml_features.py`, `test_ml_pipelines.py`, `test_ml_train.py`, `test_model_registry.py` |
-| web | Teammate B | `app/credit/routes.py` (model pages), `templates/credit/models.html`, `templates/credit/model_detail.html`, navbar, Chart.js; tests `test_credit_models_routes.py` |
+| web | Cristhian (shell and comparison), Alejandro (XGBoost tab), Harrison (Random Forest tab) | `app/credit/routes.py` (model pages), `templates/credit/models.html`, navbar, `static/js/model_charts.js`; `templates/credit/models/_xgboost.html` (Alejandro), `_random_forest.html` (Harrison), `_logistic_regression.html` and the Comparison tab in `models.html` (Cristhian); tests `test_credit_models_routes.py`, `test_credit_champion.py` |
 
 Shared and protected: `ml/schemas.py` and the example artifacts (contract changes only with
 team agreement); `app/models.py`, `app/services/repository.py` and `app/auth/services.py` are not

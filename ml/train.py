@@ -47,6 +47,7 @@ from ml.features import (
 )
 from ml.pipelines import RANDOM_STATE, SEARCH_SPACES, build_pipeline
 from ml.schemas import (
+    CHAMPION_AUC_MARGIN,
     CV_METRICS,
     DATA_REPORT_FILENAME,
     DISPLAY_NAMES,
@@ -60,9 +61,8 @@ from ml.schemas import (
 )
 
 CV_FOLDS = 5
-# Models whose mean CV ROC AUC is less than this below the best one are tied;
-# among them the higher mean CV recall (class 1) wins.
-CHAMPION_AUC_MARGIN = 0.01
+# CHAMPION_AUC_MARGIN (models closer than this to the best CV ROC AUC are tied and the higher CV
+# recall wins) lives in ml.schemas, so the web app can show it without importing this module.
 # Hyperparameter candidates sampled per model (capped by the size of the space).
 SEARCH_ITERATIONS = 8
 

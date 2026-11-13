@@ -19,12 +19,13 @@
     ('transactions.index', 'Transactions'),
     ('dashboard.index', 'Dashboard'),
   ] %}
-  {# Same names and order as ml.schemas.MODEL_NAMES / DISPLAY_NAMES (checked by the route tests).
+  {# Same names and order as ml.schemas.MODEL_NAMES / DISPLAY_NAMES, then the comparison tab (checked by the route tests).
      History is not in the menu: it is linked from the credit pages. #}
   {% set model_links = [
     ('logistic_regression', 'Logistic Regression'),
     ('random_forest', 'Random Forest'),
     ('xgboost', 'XGBoost'),
+    ('comparison', 'Model Comparison'),
   ] %}
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top site-navbar">
     <div class="container">
@@ -57,10 +58,10 @@
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="credit-menu">
                 <li><a class="dropdown-item" href="{{ url_for('credit.index') }}">New evaluation (official model)</a></li>
                 <li><hr class="dropdown-divider"></li>
+                {# Each item opens its tab of /credit/models/ (the tab id is the URL fragment). #}
                 {% for name, label in model_links %}
-                  <li><a class="dropdown-item" href="{{ url_for('credit.model_detail', name=name) }}">{{ label }}</a></li>
+                  <li><a class="dropdown-item" href="{{ url_for('credit.models') }}#{{ name }}">{{ label }}</a></li>
                 {% endfor %}
-                <li><a class="dropdown-item" href="{{ url_for('credit.models') }}">Model Comparison</a></li>
               </ul>
             </li>
           {% endif %}

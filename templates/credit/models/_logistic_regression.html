@@ -1,0 +1,11 @@
+{# Tab "Logistic Regression". Owner: Cristhian. Metrics, charts and the prediction form come from the shared
+   macros and read the JSON artifacts; the owner only writes the "About this algorithm" text. #}
+{% from "credit/models/_macros.html" import model_panel, predict_form, about_section %}
+{{ model_panel("logistic_regression", catalog) }}
+{{ about_section(
+     "logistic_regression", "Cristhian",
+     "Logistic regression models the probability of default as a logistic function of a weighted sum of the standardized features. "
+     "It is fast, easy to explain and a natural baseline. Balanced class weights compensate for the low share of defaulters."
+   ) }}
+{{ predict_form("logistic_regression", catalog.metrics.logistic_regression.display_name, active, form, result,
+                field_order, numeric_fields, choice_fields) }}
