@@ -65,6 +65,8 @@ DATA_REPORT_FILENAME = "data_report.json"
 EXPERIMENTS_FILENAME = "experiments.json"
 OVERFITTING_FILENAME = "overfitting.json"
 SUBGROUPS_FILENAME = "subgroups.json"
+# Written by notebooks/credit_risk_dimensionality.ipynb, not by ml.train.
+DIMENSIONALITY_REPORT_FILENAME = "dimensionality_report.json"
 
 METRICS_KEYS = (
     "model",
@@ -380,6 +382,90 @@ def validate_subgroups(subgroups):
     return errors
 
 
+def validate_dimensionality_report(report):
+    """Validate dimensionality_report.json (written by the dimensionality notebook).
+
+    Format::
+
+        {
+          "artifacts_version": "2026-11-13.1",   # manifest.version of the champion it was run with
+          "champion": "logistic_regression",
+          "dataset": {"sha256": "<64 hex>", "train_rows": int},
+          "protocol": {"data": str, "cv_folds": 5, "random_state": 42, "test_usage": str},
+          "pca": {"input_columns": [...], "explained_variance_ratio": [...], "cumulative_variance": [...],
+                  "components_for_90_percent": int, "components_for_95_percent": int},
+          "tsne": {"sample_rows": int, "perplexity": number, "random_state": int, "kl_divergence": number},
+          "experiments": {
+            "pca_components": {"baseline": {"n_features": int, "cv": {"roc_auc": [m, s], "recall": [m, s]}},
+                               "variants": [{"n_components": int, "explained_variance": number,
+                                             "cv": {...}, "delta_roc_auc": number, "delta_recall": number}]},
+            "without_age": {"with_age": {"cv": {...}, "flagged_rate": number},
+                            "without_age": {"cv": {...}, "flagged_rate": number},
+                            "by_age_range": {label: {"rows", "default_rate", "flagged_rate_with_age",
+                                                      "flagged_rate_without_age", "recall_with_age",
+                                                      "recall_without_age"}},
+                            "flag_rate_ratio_youngest_to_oldest": {"with_age": x, "without_age": x}}
+          },
+          "interpretation": [str, ...],
+          "figures": ["methodology/pca_scree.png", ...]
+        }
+    """
+    top = ("artifacts_version", "champion", "dataset", "protocol", "pca", "tsne", "experiments",
+           "interpretation", "figures")
+    errors = _check_keys(report, top, "dimensionality_report")
+    if errors:
+        return errors
+
+    if report["champion"] not in MODEL_NAMES:
+        errors.append("dimensionality_report.champion must be one of the model names")
+    errors += _check_keys(report["dataset"], ("sha256", "train_rows"), "dimensionality_report.dataset")
+    errors += _check_keys(report["protocol"], ("data", "cv_folds", "random_state", "test_usage"),
+                          "dimensionality_report.protocol")
+    errors += _check_keys(
+        report["pca"],
+        ("input_columns", "explained_variance_ratio", "cumulative_variance",
+         "components_for_90_percent", "components_for_95_percent"),
+        "dimensionality_report.pca",
+    )
+    errors += _check_keys(report["tsne"], ("sample_rows", "perplexity", "random_state", "kl_divergence"),
+                          "dimensionality_report.tsne")
+
+    experiments = report["experiments"]
+    errors += _check_keys(experiments, ("pca_components", "without_age"), "dimensionality_report.experiments")
+    if errors:
+        return errors
+
+    pca_experiment = experiments["pca_components"]
+    errors += _check_keys(pca_experiment, ("baseline", "variants"), "experiments.pca_components")
+    if isinstance(pca_experiment.get("variants"), list) and pca_experiment["variants"]:
+        for variant in pca_experiment["variants"]:
+            keys = ("n_components", "explained_variance", "cv", "delta_roc_auc", "delta_recall")
+            errors += _check_keys(variant, keys, "experiments.pca_components.variants item")
+    else:
+        errors.append("experiments.pca_components.variants must be a non-empty list")
+
+    without_age = experiments["without_age"]
+    errors += _check_keys(
+        without_age,
+        ("with_age", "without_age", "by_age_range", "flag_rate_ratio_youngest_to_oldest"),
+        "experiments.without_age",
+    )
+    by_age = without_age.get("by_age_range") if isinstance(without_age, dict) else None
+    if not isinstance(by_age, dict) or not by_age:
+        errors.append("experiments.without_age.by_age_range must be a non-empty object")
+    else:
+        keys = ("rows", "default_rate", "flagged_rate_with_age", "flagged_rate_without_age",
+                "recall_with_age", "recall_without_age")
+        for label, group in by_age.items():
+            errors += _check_keys(group, keys, f"experiments.without_age.by_age_range[{label!r}]")
+
+    if not isinstance(report["interpretation"], list) or not report["interpretation"]:
+        errors.append("dimensionality_report.interpretation must be a non-empty list")
+    if not isinstance(report["figures"], list) or not report["figures"]:
+        errors.append("dimensionality_report.figures must be a non-empty list")
+    return errors
+
+
 def load_json(path):
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
@@ -436,6 +522,14 @@ def validate_artifacts(directory, require_models=False):
             errors += [f"{filename}: {error}" for error in validator(load_json(path))]
         elif require_models:
             errors.append(f"{path} does not exist")
+
+    # Optional: produced by the notebook, validated when present.
+    report_path = os.path.join(directory, DIMENSIONALITY_REPORT_FILENAME)
+    if os.path.exists(report_path):
+        errors += [
+            f"{DIMENSIONALITY_REPORT_FILENAME}: {error}"
+            for error in validate_dimensionality_report(load_json(report_path))
+        ]
 
     if require_models and artifacts_size(directory) >= MAX_ARTIFACTS_BYTES:
         errors.append(f"{directory} is {artifacts_size(directory)} bytes; the limit is {MAX_ARTIFACTS_BYTES}")

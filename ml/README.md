@@ -14,6 +14,7 @@ imports training code.
 | `schemas.py` | Format and validators of the training artifacts (`manifest.json`, `metrics.json`, `data_report.json`, `experiments.json`, `overfitting.json`, `subgroups.json`) |
 | `dataset.py`, `pipelines.py`, `evaluate.py`, `train.py` | Real training pipeline: `python -m ml.train` (needs `data/raw/Loan_default.csv`, about 5 minutes) |
 | `experiments/random_forest_baseline.py` | Standalone Random Forest baseline script (kept for reference; not used by the app) |
+| `artifacts/dimensionality_report.json` | Written by `notebooks/credit_risk_dimensionality.ipynb` (EDA, PCA, t-SNE, PCA and "without Age" experiments); figures in `static/img/methodology/`. Colab needs `requirements-notebook.txt` (Python 3.12+) |
 | `artifacts/_example/` | Fictitious example artifacts used by the model pages until real ones exist |
 | `data/` | Dataset documentation; raw files go in `data/raw/` (ignored by git) |
 
