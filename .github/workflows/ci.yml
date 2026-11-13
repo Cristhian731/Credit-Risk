@@ -1,7 +1,11 @@
-name: Tests copy
+name: CI probe
 
 on:
+  pull_request:
+    branches: [develop, main]
   push:
+    branches-ignore: [main, develop]
+  workflow_dispatch:
 
 permissions:
   contents: read
