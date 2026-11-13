@@ -3,6 +3,8 @@ name: Tests
 on:
   pull_request:
     branches: [develop, main]
+  push:
+    branches-ignore: [main, develop]
   workflow_dispatch:
 
 permissions:
