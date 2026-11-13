@@ -208,3 +208,68 @@ def test_tab_form_without_trained_models_answers_503(demo_client, example_only):
     response = demo_client.post("/credit/models/xgboost/predict", data=FORM)
     assert response.status_code == 503
     assert "not available" in response.get_data(as_text=True)
+
+
+# "About this algorithm": written text, values read from the JSON artifacts
+
+REFERENCE_DOIS = {
+    "logistic_regression": ["10.1111/j.2517-6161.1958.tb00292.x", "10.1002/9781118548387"],
+    "random_forest": ["10.1023/A:1010933404324"],
+    "xgboost": ["10.1145/2939672.2939785"],
+}
+
+
+def _about(html, name):
+    return html.split(f'data-testid="about-{name}"')[1].split("Try ")[0]
+
+
+@pytest.mark.parametrize("name", MODEL_NAMES)
+def test_about_section_is_written_and_has_no_placeholder(demo_client, name):
+    section = _about(demo_client.get("/credit/models/").get_data(as_text=True), name)
+    assert "TODO" not in section and "Owner:" not in section
+    for heading in ("How it works", "Why it fits this problem", "Strengths and limits", "Hyperparameters in this tab", "References"):
+        assert heading in section
+
+
+@pytest.mark.parametrize("name", MODEL_NAMES)
+def test_about_section_has_150_to_250_words(demo_client, name):
+    section = _about(demo_client.get("/credit/models/").get_data(as_text=True), name).split("References")[0]
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", section))
+    assert 150 <= len(text.split()) <= 250
+
+
+@pytest.mark.parametrize("name", MODEL_NAMES)
+def test_about_section_cites_its_references_with_doi(demo_client, name):
+    section = _about(demo_client.get("/credit/models/").get_data(as_text=True), name)
+    for doi in REFERENCE_DOIS[name]:
+        assert f"https://doi.org/{doi}" in section
+
+
+@pytest.mark.parametrize("name", MODEL_NAMES)
+def test_about_section_shows_the_selected_hyperparameters_and_metrics_from_the_json(app, demo_client, name):
+    catalog = app.extensions["model_registry"].catalog()
+    section = _about(demo_client.get("/credit/models/").get_data(as_text=True), name)
+    selected = next(run for run in catalog["experiments"]["models"][name]["runs"] if run["selected"])
+    for key, value in selected["params"].items():
+        assert f"<code>{key}</code>" in section
+        assert f"Selected: <code>{value}</code>" in section
+    metrics = catalog["metrics"][name]
+    assert f"{metrics['cv']['roc_auc'][0]:.3f}" in section
+    assert f"{metrics['cv']['recall'][0]:.3f}" in section
+
+
+def test_about_section_follows_the_artifacts_when_they_change(app, demo_client, tmp_path, monkeypatch):
+    """Nothing is typed by hand: with other artifacts the numbers in the text change."""
+    import json
+    import shutil
+
+    from ml.features import ARTIFACTS_DIR
+
+    shutil.copytree(ARTIFACTS_DIR, tmp_path, dirs_exist_ok=True)
+    path = tmp_path / "xgboost" / "metrics.json"
+    metrics = json.loads(path.read_text(encoding="utf-8"))
+    metrics["cv"]["roc_auc"][0] = 0.6123
+    path.write_text(json.dumps(metrics), encoding="utf-8")
+    monkeypatch.setattr(app.extensions["model_registry"], "artifacts_dir", str(tmp_path))
+    section = _about(demo_client.get("/credit/models/").get_data(as_text=True), "xgboost")
+    assert "0.612" in section

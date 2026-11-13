@@ -1,11 +1,37 @@
-{# Tab "XGBoost". Owner: Alejandro. Metrics, charts and the prediction form come from the shared
-   macros and read the JSON artifacts; the owner only writes the "About this algorithm" text. #}
+{# Tab "XGBoost". Metrics, charts and the prediction form come from the shared macros and read the
+   JSON artifacts. The chosen hyperparameters and the metrics in the text are template variables, not typed values. #}
 {% from "credit/models/_macros.html" import model_panel, predict_form, about_section %}
+{% set m = catalog.metrics.xgboost %}
+{% set run = (catalog.experiments.models.xgboost.runs|selectattr('selected')|first) if catalog.experiments else none %}
+{% set p = run.params if run else m.params %}
 {{ model_panel("xgboost", catalog) }}
-{{ about_section(
-     "xgboost", "Alejandro",
-     "XGBoost builds decision trees one after another, each one correcting the errors of the previous ones (gradient boosting). "
-     "It is very effective on tabular data and handles class imbalance with a positive class weight, but it has more hyperparameters to tune."
-   ) }}
-{{ predict_form("xgboost", catalog.metrics.xgboost.display_name, active, form, result,
-                field_order, numeric_fields, choice_fields) }}
+{% call about_section("xgboost") %}
+  <h4 class="h6 fw-bold">How it works</h4>
+  <p>XGBoost builds decision trees one after another. Each new tree is fitted to the errors of the previous ones
+     (gradient boosting), and the final probability adds the contribution of every tree, each scaled by the learning
+     rate and with regularization to avoid overfitting (Chen &amp; Guestrin, 2016).</p>
+  <h4 class="h6 fw-bold">Why it fits this problem</h4>
+  <p>It is very effective on tabular data and captures non-linear relations and interactions. Because defaults are rare,
+     <code>scale_pos_weight</code> multiplies the weight of the default class by the ratio of repaid to defaulted loans in
+     the training split.</p>
+  <h4 class="h6 fw-bold">Strengths and limits</h4>
+  <p>It usually ranks applicants very well and its saved model is small. It has more hyperparameters than the other
+     models, it is more sensitive to them, and it is harder to explain than logistic regression.</p>
+  <h4 class="h6 fw-bold">Hyperparameters in this tab</h4>
+  <ul>
+    <li><code>n_estimators</code>: number of trees. Selected: <code>{{ p.get('n_estimators', 'n/a') }}</code>.</li>
+    <li><code>max_depth</code>: depth of each tree; deeper trees capture more interactions but overfit more easily. Selected: <code>{{ p.get('max_depth', 'n/a') }}</code>.</li>
+    <li><code>learning_rate</code>: contribution of each tree; low values need more trees. Selected: <code>{{ p.get('learning_rate', 'n/a') }}</code>.</li>
+    <li><code>subsample</code>: share of the applicants used by each tree. Selected: <code>{{ p.get('subsample', 'n/a') }}</code>.</li>
+    <li><code>colsample_bytree</code>: share of the features used by each tree. Selected: <code>{{ p.get('colsample_bytree', 'n/a') }}</code>.</li>
+    <li><code>min_child_weight</code>: minimum weight needed in a leaf. Selected: <code>{{ p.get('min_child_weight', 'n/a') }}</code>.</li>
+    <li><code>scale_pos_weight</code>: weight of the default class. Selected: <code>{{ '%.2f'|format(m.params.scale_pos_weight) if m.params.scale_pos_weight is defined else 'n/a' }}</code>.</li>
+  </ul>
+  <p>The mean cross-validated ROC AUC is {{ '%.3f'|format(m.cv.roc_auc[0]) }} and the recall of the default class is
+     {{ '%.3f'|format(m.cv.recall[0]) }}.</p>
+  <h4 class="h6 fw-bold">References</h4>
+  <ul class="list-unstyled small mb-0">
+    <li class="apa-reference">Chen, T., &amp; Guestrin, C. (2016). XGBoost: A scalable tree boosting system. In <em>Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</em> (pp. 785-794). ACM. <a href="https://doi.org/10.1145/2939672.2939785">https://doi.org/10.1145/2939672.2939785</a></li>
+  </ul>
+{% endcall %}
+{{ predict_form("xgboost", m.display_name, active, form, result, field_order, numeric_fields, choice_fields) }}

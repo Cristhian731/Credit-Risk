@@ -205,13 +205,11 @@
 {% endif %}
 {% endmacro %}
 
-{# "About this algorithm": every owner replaces the TODO text with their own explanation. #}
-{% macro about_section(name, owner, base_text) %}
+{# "About this algorithm": the text of each model is written in its partial inside {% call about_section(name) %}.
+   Chosen values and metrics are template variables read from the JSON artifacts, never typed by hand. #}
+{% macro about_section(name) %}
 <div class="card p-4 mt-3" data-testid="about-{{ name }}">
   <h3 class="h5 fw-bold">About this algorithm</h3>
-  <p><span class="badge text-bg-warning me-1">TODO</span><strong>Owner: {{ owner }}.</strong>
-     Replace this base text with your own explanation (how it works, why it was chosen, strengths,
-     limits and what its hyperparameters do).</p>
-  <p class="mb-0">{{ base_text }}</p>
+  {{ caller() }}
 </div>
 {% endmacro %}
