@@ -55,6 +55,8 @@ APPROVED_MAX = 0.33
 MEDIUM_MAX = 0.66
 
 SIMULATED_ROWS = 2000
+# A PSI computed from fewer rows than this is mostly sampling noise (10 bins per feature).
+MIN_RELIABLE_ROWS = 500
 SIMULATED_SEED = 42
 # The drift put on purpose in the SIMULATED batch: feature -> (kind, amount).
 SIMULATED_DRIFT = {
@@ -245,6 +247,11 @@ def build_report(batch, risk, reference, manifest, source, seed=None, period=Non
         "watch": "Watch: review the features listed in features_to_watch at the next scheduled check.",
         "alert": "Alert: investigate the features in alert, check the data source and decide whether to retrain.",
     }[overall]
+    if not simulated and len(batch) < MIN_RELIABLE_ROWS:
+        recommendation += (
+            f" Only {len(batch)} predictions in the log (fewer than {MIN_RELIABLE_ROWS}): the PSI values are"
+            " dominated by sampling noise and do not show drift. Wait for a larger batch."
+        )
     if simulated:
         recommendation += " This batch is SIMULATED with an intentional drift: it only demonstrates the procedure."
     return {

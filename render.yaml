@@ -1,0 +1,34 @@
+# Render Blueprint: one free web service and one free PostgreSQL database.
+# Set DEMO_PASSWORD in the Render dashboard (it is not stored here). See README.md, "Deploy on Render".
+databases:
+  - name: credit-risk-db
+    plan: free
+    databaseName: credit_risk
+    user: credit_risk
+
+services:
+  - type: web
+    name: credit-risk
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Migrate, make sure the demo account exists with the current DEMO_PASSWORD (safe to repeat on every
+    # start), then serve with ONE worker: the free plan has 512 MB of memory. The timeout leaves room to
+    # load a model on the first request after the service wakes up.
+    startCommand: flask --app run db upgrade && flask --app run seed-demo && gunicorn --workers 1 --timeout 120 --bind 0.0.0.0:$PORT run:app
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.10
+      - key: FLASK_CONFIG
+        value: production
+      - key: AUTH_ENABLED
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: credit-risk-db
+          property: connectionString
+      - key: DEMO_PASSWORD
+        sync: false

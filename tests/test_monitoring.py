@@ -164,6 +164,24 @@ def test_report_from_a_prediction_log_is_not_simulated(artifacts, reference, tmp
     assert report["overall_status"] == "stable"
 
 
+def test_a_small_log_warns_that_the_psi_is_not_reliable(artifacts, reference, tmp_path):
+    batch = monitor.simulated_batch(reference, 20, 5, drift={})
+    log = PredictionLog(str(tmp_path / "predictions.jsonl"))
+    for row in batch.to_dict("records"):
+        log.record("logistic_regression", "lr@x", row, 0.4, "Medium Risk")
+    report = monitor.run(log_path=log.path, artifacts_dir=artifacts)
+    assert "Only 20 predictions" in report["recommendation"] and "sampling noise" in report["recommendation"]
+
+
+def test_a_large_log_has_no_small_batch_warning(artifacts, reference, tmp_path):
+    batch = monitor.simulated_batch(reference, monitor.MIN_RELIABLE_ROWS, 5, drift={})
+    log = PredictionLog(str(tmp_path / "predictions.jsonl"))
+    for row in batch.to_dict("records"):
+        log.record("logistic_regression", "lr@x", row, 0.4, "Medium Risk")
+    report = monitor.run(log_path=log.path, artifacts_dir=artifacts)
+    assert "sampling noise" not in report["recommendation"]
+
+
 def test_empty_log_is_rejected(artifacts, tmp_path):
     empty = tmp_path / "empty.jsonl"
     empty.write_text("", encoding="utf-8")
