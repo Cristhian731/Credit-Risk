@@ -97,7 +97,8 @@ def test_each_tab_shows_the_model_with_example_banner(demo_client, example_only,
     assert "Example data" in html
     assert DISPLAY_NAMES[name] in pane
     assert "Confusion matrix" in pane
-    assert "About this algorithm" in pane and "TODO" in pane
+    # Each owner replaces the base text, so only the section title is required.
+    assert "About this algorithm" in pane
 
 
 def test_example_banner_disappears_with_trained_models(app, demo_client, monkeypatch):
