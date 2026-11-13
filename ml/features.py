@@ -106,8 +106,7 @@ def to_model_frame(application, feature_set=DEFAULT_FEATURE_SET):
 
     Mapping for ``v2-loan-default``:
         - age -> Age, clipped to ``CLIP_RANGES["Age"]``.
-        - monthly_income -> Income.
-          TODO: multiply by 12 if the EDA confirms that Income is annual.
+        - monthly_income * 12 -> Income (the dataset Income is annual).
         - employment_status -> EmploymentType through ``EMPLOYMENT_TYPE_MAP``.
           ``validate_form`` returns the encoded integer, so decode it with
           ``CATEGORICAL_ENCODINGS["employment_status"]`` first.
@@ -121,4 +120,42 @@ def to_model_frame(application, feature_set=DEFAULT_FEATURE_SET):
     Raises:
         ValueError: If ``feature_set`` is unknown or a required field is missing.
     """
-    raise NotImplementedError("Sprint 1 - owner: ml")
+    import pandas as pd
+
+    if feature_set not in FEATURE_SETS:
+        raise ValueError(f"Unknown feature set: {feature_set}")
+    if feature_set != DEFAULT_FEATURE_SET:
+        raise ValueError(f"to_model_frame only supports {DEFAULT_FEATURE_SET!r}")
+
+    required = (
+        "age", "monthly_income", "employment_status", "years_employment",
+        "credit_score", "dti_ratio", "loan_amount", "loan_term", "previous_loans",
+    )
+    missing = [name for name in required if name not in application]
+    if missing:
+        raise ValueError(f"Missing form fields: {missing}")
+
+    def clip(column, value):
+        low, high = CLIP_RANGES[column]
+        return min(max(value, low), high)
+
+    status_by_code = {code: status for status, code in CATEGORICAL_ENCODINGS["employment_status"].items()}
+    status = application["employment_status"]
+    status = status_by_code.get(status, status)
+    if status not in EMPLOYMENT_TYPE_MAP:
+        raise ValueError(f"Unknown employment status: {status!r}")
+
+    row = {
+        "Age": clip("Age", application["age"]),
+        # The dataset Income is annual (see data_report.json); the form is monthly.
+        "Income": application["monthly_income"] * 12,
+        "LoanAmount": application["loan_amount"],
+        "CreditScore": clip("CreditScore", application["credit_score"]),
+        "MonthsEmployed": int(round(application["years_employment"] * 12)),
+        "NumCreditLines": clip("NumCreditLines", application["previous_loans"]),
+        "LoanTerm": clip("LoanTerm", application["loan_term"]),
+        "DTIRatio": application["dti_ratio"] / 100,
+        "EmploymentType": EMPLOYMENT_TYPE_MAP[status],
+    }
+    columns = list(FEATURE_SETS[feature_set]["columns"])
+    return pd.DataFrame([row], columns=columns)

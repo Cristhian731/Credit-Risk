@@ -20,6 +20,12 @@ def demo_client(client, demo_user):
 
 
 @pytest.fixture
+def example_only(app, tmp_path, monkeypatch):
+    """Point the registry to an empty folder, as before the first training run."""
+    monkeypatch.setattr(app.extensions["model_registry"], "artifacts_dir", str(tmp_path))
+
+
+@pytest.fixture
 def auth_on(app):
     app.config["AUTH_ENABLED"] = True
 
@@ -51,7 +57,7 @@ def test_unknown_model_name_is_404(demo_client, name):
 
 # Content with the example artifacts
 
-def test_comparison_lists_the_three_models_with_example_banner(demo_client):
+def test_comparison_lists_the_three_models_with_example_banner(demo_client, example_only):
     html = demo_client.get("/credit/models/").get_data(as_text=True)
     assert "Example data" in html
     for name in MODEL_NAMES:
@@ -61,7 +67,7 @@ def test_comparison_lists_the_three_models_with_example_banner(demo_client):
 
 
 @pytest.mark.parametrize("name", MODEL_NAMES)
-def test_detail_shows_the_model_with_example_banner(demo_client, name):
+def test_detail_shows_the_model_with_example_banner(demo_client, example_only, name):
     html = demo_client.get(f"/credit/models/{name}/").get_data(as_text=True)
     assert "Example data" in html
     assert DISPLAY_NAMES[name] in html

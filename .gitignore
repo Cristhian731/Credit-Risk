@@ -30,7 +30,7 @@ Thumbs.db
 # Raw datasets (downloaded locally, never committed; see ml/data/README.md)
 ml/data/raw/
 
-# Loose outputs of the standalone Random Forest script (ml/RamdonForest.py, written to the working directory)
+# Loose outputs of the standalone Random Forest script (ml/experiments/random_forest_baseline.py, written to the working directory)
 /credit_risk_model.joblib
 /training_results.json
 /training_results.js
