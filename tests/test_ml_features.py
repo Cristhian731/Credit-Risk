@@ -13,7 +13,6 @@ from ml.features import (
     to_model_frame,
 )
 
-SPRINT_1_ML = pytest.mark.skip(reason="Sprint 1 - owner: ml")
 
 FORM = {
     "age": "35",
@@ -65,7 +64,7 @@ def test_clip_ranges_match_the_dataset():
     }
 
 
-# Skeleton tests for the ml owner
+# Behaviour
 
 def _frame(**overrides):
     values, errors = validate_form({**FORM, **overrides})
@@ -73,7 +72,6 @@ def _frame(**overrides):
     return to_model_frame(values)
 
 
-@SPRINT_1_ML
 def test_to_model_frame_returns_one_row_in_feature_set_order():
     """The frame has one row and exactly the v2 columns, in order."""
     frame = _frame()
@@ -81,7 +79,6 @@ def test_to_model_frame_returns_one_row_in_feature_set_order():
     assert tuple(frame.columns) == FEATURE_SETS[DEFAULT_FEATURE_SET]["columns"]
 
 
-@SPRINT_1_ML
 def test_to_model_frame_converts_units():
     """years_employment 2.5 -> MonthsEmployed 30; dti_ratio 15 -> DTIRatio 0.15."""
     row = _frame().iloc[0]
@@ -90,14 +87,12 @@ def test_to_model_frame_converts_units():
     assert row["LoanAmount"] == 10000
 
 
-@SPRINT_1_ML
 @pytest.mark.parametrize("status, category", sorted(EMPLOYMENT_TYPE_MAP.items()))
 def test_to_model_frame_maps_employment_status(status, category):
     """Each form employment status becomes its dataset EmploymentType."""
     assert _frame(employment_status=status).iloc[0]["EmploymentType"] == category
 
 
-@SPRINT_1_ML
 def test_to_model_frame_clips_to_dataset_ranges():
     """credit_score 850 -> 849, loan_term 120 -> 60, previous_loans 0 -> 1, age 90 -> 69."""
     row = _frame(age="90").iloc[0]
@@ -107,13 +102,11 @@ def test_to_model_frame_clips_to_dataset_ranges():
     assert row["Age"] == 69
 
 
-@SPRINT_1_ML
 def test_to_model_frame_ignores_debt_and_payment_history():
     """Changing existing_debt or payment_history does not change the frame."""
     assert _frame().equals(_frame(existing_debt="90000", payment_history="poor"))
 
 
-@SPRINT_1_ML
 def test_to_model_frame_rejects_an_unknown_feature_set():
     """An unknown feature_set raises ValueError."""
     values, _errors = validate_form(FORM)

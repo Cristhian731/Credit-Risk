@@ -23,7 +23,17 @@ CV_METRICS = ("roc_auc", "recall", "precision", "f1")
 TEST_METRICS = ("roc_auc", "recall", "precision", "f1", "accuracy")
 
 MANIFEST_KEYS = ("version", "trained_at", "dataset", "feature_set", "selection_rule", "champion", "models")
+# Written by real training runs; the fictitious example manifest may omit them.
+MANIFEST_OPTIONAL_KEYS = ("success_criteria",)
 DATASET_KEYS = ("name", "sha256", "rows")
+DATASET_OPTIONAL_KEYS = ("expected_sha256", "sha256_matches_expected")
+
+# Extra artifacts of a real training run, next to manifest.json.
+DATA_REPORT_FILENAME = "data_report.json"
+EXPERIMENTS_FILENAME = "experiments.json"
+OVERFITTING_FILENAME = "overfitting.json"
+SUBGROUPS_FILENAME = "subgroups.json"
+
 METRICS_KEYS = (
     "model",
     "display_name",
@@ -54,11 +64,15 @@ def _is_probability(value):
     return _is_number(value) and 0 <= value <= 1
 
 
-def _check_keys(doc, expected, where):
+def _check_keys(doc, expected, where, optional=()):
     if not isinstance(doc, dict):
         return [f"{where} must be an object"]
     errors = [f"{where} is missing '{key}'" for key in expected if key not in doc]
-    errors += [f"{where} has unexpected key '{key}'" for key in doc if key not in expected]
+    errors += [
+        f"{where} has unexpected key '{key}'"
+        for key in doc
+        if key not in expected and key not in optional
+    ]
     return errors
 
 
@@ -77,7 +91,7 @@ def validate_manifest(manifest):
           "models": ["logistic_regression", "random_forest", "xgboost"]
         }
     """
-    errors = _check_keys(manifest, MANIFEST_KEYS, "manifest")
+    errors = _check_keys(manifest, MANIFEST_KEYS, "manifest", MANIFEST_OPTIONAL_KEYS)
     if not isinstance(manifest, dict):
         return errors
 
@@ -87,7 +101,7 @@ def validate_manifest(manifest):
         errors.append("manifest.trained_at must be an ISO 8601 UTC timestamp such as 2026-11-10T21:30:00Z")
 
     dataset = manifest.get("dataset")
-    dataset_errors = _check_keys(dataset, DATASET_KEYS, "manifest.dataset")
+    dataset_errors = _check_keys(dataset, DATASET_KEYS, "manifest.dataset", DATASET_OPTIONAL_KEYS)
     errors += dataset_errors
     if isinstance(dataset, dict):
         if not isinstance(dataset.get("name"), str) or not dataset.get("name"):
@@ -115,6 +129,29 @@ def validate_manifest(manifest):
             errors.append("manifest.models has duplicates")
     if manifest.get("champion") not in models:
         errors.append("manifest.champion must be one of manifest.models")
+
+    criteria = manifest.get("success_criteria")
+    if criteria is not None:
+        errors += _check_success_criteria(criteria)
+    return errors
+
+
+def _check_success_criteria(criteria):
+    """success_criteria: {"champion": str, "all_passed": bool, "results": [{criterion, threshold, value, passed}]}."""
+    errors = _check_keys(criteria, ("champion", "all_passed", "results"), "manifest.success_criteria")
+    if errors:
+        return errors
+    if not isinstance(criteria["all_passed"], bool):
+        errors.append("manifest.success_criteria.all_passed must be a boolean")
+    results = criteria["results"]
+    if not isinstance(results, list) or not results:
+        return errors + ["manifest.success_criteria.results must be a non-empty list"]
+    for item in results:
+        if not (isinstance(item, dict) and set(item) == {"criterion", "threshold", "value", "passed"}
+                and isinstance(item["criterion"], str) and _is_number(item["value"])
+                and isinstance(item["passed"], bool)):
+            errors.append("manifest.success_criteria.results items need criterion, threshold, value and passed")
+            break
     return errors
 
 
@@ -231,6 +268,86 @@ def _check_roc_curve(curve, where):
     return errors
 
 
+def validate_data_report(report):
+    """Validate data_report.json: before/after statistics, transformations and split sizes."""
+    errors = _check_keys(report, ("dataset", "before", "after", "transformations", "split"), "data_report")
+    if errors:
+        return errors
+    keys = ("rows", "columns", "null_cells", "null_by_column", "duplicate_rows", "duplicate_ids",
+            "default_rate", "inconsistencies", "outliers")
+    for part in ("before", "after"):
+        errors += _check_keys(report[part], keys, f"data_report.{part}")
+    if not isinstance(report["transformations"], list) or not report["transformations"]:
+        errors.append("data_report.transformations must be a non-empty list")
+    return errors
+
+
+def validate_experiments(experiments):
+    """Validate experiments.json: the protocol and every hyperparameter run of every model."""
+    errors = _check_keys(experiments, ("version", "trained_at", "protocol", "total_seconds", "models"), "experiments")
+    if errors:
+        return errors
+    errors += _check_keys(
+        experiments["protocol"],
+        ("selection_data", "test_usage", "scoring", "cv_folds", "random_state", "search"),
+        "experiments.protocol",
+    )
+    models = experiments["models"]
+    if not isinstance(models, dict) or not models:
+        return errors + ["experiments.models must be a non-empty object"]
+    for name, entry in models.items():
+        where = f"experiments.models[{name!r}]"
+        keys = ("search_space", "n_candidates", "search_seconds", "runs")
+        errors += _check_keys(entry, keys, where)
+        if not isinstance(entry, dict) or not isinstance(entry.get("runs"), list) or not entry["runs"]:
+            errors.append(f"{where}.runs must be a non-empty list")
+            continue
+        if any(not (isinstance(run, dict) and set(run) == {"run", "params", "cv", "fit_seconds", "selected"})
+               for run in entry["runs"]):
+            errors.append(f"{where}.runs items need run, params, cv, fit_seconds and selected")
+        elif sum(1 for run in entry["runs"] if run["selected"] is True) != 1:
+            errors.append(f"{where} must have exactly one selected run")
+    return errors
+
+
+def validate_overfitting(overfitting):
+    """Validate overfitting.json: train vs. CV vs. test ROC AUC per model."""
+    errors = _check_keys(overfitting, ("version", "threshold", "models"), "overfitting")
+    if errors:
+        return errors
+    models = overfitting["models"]
+    if not isinstance(models, dict) or not models:
+        return ["overfitting.models must be a non-empty object"]
+    keys = ("train_roc_auc", "cv_roc_auc", "test_roc_auc", "train_minus_cv", "cv_minus_test", "overfit")
+    for name, entry in models.items():
+        where = f"overfitting.models[{name!r}]"
+        errors += _check_keys(entry, keys, where)
+        if isinstance(entry, dict) and not isinstance(entry.get("overfit"), bool):
+            errors.append(f"{where}.overfit must be a boolean")
+    return errors
+
+
+def validate_subgroups(subgroups):
+    """Validate subgroups.json: test metrics by age range and employment type per model."""
+    errors = _check_keys(subgroups, ("version", "split", "models"), "subgroups", ("findings",))
+    if errors:
+        return errors
+    findings = subgroups.get("findings")
+    if findings is not None:
+        finding_keys = ("id", "dimension", "model", "severity", "title", "summary", "evidence", "recommendation")
+        if not isinstance(findings, list) or not findings:
+            errors.append("subgroups.findings must be a non-empty list")
+        else:
+            for item in findings:
+                errors += _check_keys(item, finding_keys, "subgroups.findings item")
+    models = subgroups["models"]
+    if not isinstance(models, dict) or not models:
+        return ["subgroups.models must be a non-empty object"]
+    for name, entry in models.items():
+        errors += _check_keys(entry, ("age_range", "employment_type"), f"subgroups.models[{name!r}]")
+    return errors
+
+
 def load_json(path):
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
@@ -274,6 +391,19 @@ def validate_artifacts(directory, require_models=False):
             errors.append(f"{metrics_path} model_version differs from manifest.version")
         if require_models and not os.path.exists(os.path.join(directory, name, MODEL_FILENAME)):
             errors.append(f"{name}/{MODEL_FILENAME} does not exist")
+
+    extra_validators = (
+        (DATA_REPORT_FILENAME, validate_data_report),
+        (EXPERIMENTS_FILENAME, validate_experiments),
+        (OVERFITTING_FILENAME, validate_overfitting),
+        (SUBGROUPS_FILENAME, validate_subgroups),
+    )
+    for filename, validator in extra_validators:
+        path = os.path.join(directory, filename)
+        if os.path.exists(path):
+            errors += [f"{filename}: {error}" for error in validator(load_json(path))]
+        elif require_models:
+            errors.append(f"{path} does not exist")
 
     if require_models and artifacts_size(directory) >= MAX_ARTIFACTS_BYTES:
         errors.append(f"{directory} is {artifacts_size(directory)} bytes; the limit is {MAX_ARTIFACTS_BYTES}")

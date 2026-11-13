@@ -7,7 +7,6 @@ import pytest
 from ml import dataset
 
 SAMPLE = os.path.join(os.path.dirname(__file__), "fixtures", "loan_default_sample.csv")
-SPRINT_1_DATA = pytest.mark.skip(reason="Sprint 1 - owner: data")
 
 
 def _sample_rows():
@@ -44,9 +43,8 @@ def test_sample_covers_every_employment_type():
     assert {row["EmploymentType"] for row in rows} == {"Full-time", "Part-time", "Self-employed", "Unemployed"}
 
 
-# Skeleton tests for the data owner
+# Behaviour
 
-@SPRINT_1_DATA
 def test_load_returns_the_18_columns_with_an_integer_target():
     """load(SAMPLE) returns 60 rows, columns == RAW_COLUMNS and Default as int 0/1."""
     df = dataset.load(SAMPLE)
@@ -55,7 +53,6 @@ def test_load_returns_the_18_columns_with_an_integer_target():
     assert set(df[dataset.TARGET_COLUMN].unique()) == {0, 1}
 
 
-@SPRINT_1_DATA
 def test_load_rejects_a_file_with_a_missing_column(tmp_path):
     """A CSV without the Default column raises ValueError naming the column."""
     path = tmp_path / "broken.csv"
@@ -66,14 +63,12 @@ def test_load_rejects_a_file_with_a_missing_column(tmp_path):
         dataset.load(str(path))
 
 
-@SPRINT_1_DATA
 def test_load_reports_a_missing_file():
     """A path that does not exist raises FileNotFoundError."""
     with pytest.raises(FileNotFoundError):
         dataset.load("does-not-exist.csv")
 
 
-@SPRINT_1_DATA
 def test_split_is_stratified_80_20_and_drops_id_and_target():
     """split() keeps 20 % for test, the default rate in both parts and no LoanID/Default columns."""
     df = dataset.load(SAMPLE)
@@ -84,7 +79,6 @@ def test_split_is_stratified_80_20_and_drops_id_and_target():
     assert abs(y_train.mean() - y_test.mean()) < 0.05
 
 
-@SPRINT_1_DATA
 def test_split_is_reproducible():
     """Two calls on the same frame return the same test index (seed 42)."""
     df = dataset.load(SAMPLE)

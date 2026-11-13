@@ -1,0 +1,30 @@
+{
+  "version": "2026-11-13.1",
+  "threshold": 0.05,
+  "models": {
+    "logistic_regression": {
+      "train_roc_auc": 0.7113,
+      "cv_roc_auc": 0.7111,
+      "test_roc_auc": 0.7176,
+      "train_minus_cv": 0.0001,
+      "cv_minus_test": -0.0065,
+      "overfit": false
+    },
+    "random_forest": {
+      "train_roc_auc": 0.7339,
+      "cv_roc_auc": 0.7161,
+      "test_roc_auc": 0.7223,
+      "train_minus_cv": 0.0178,
+      "cv_minus_test": -0.0062,
+      "overfit": false
+    },
+    "xgboost": {
+      "train_roc_auc": 0.7317,
+      "cv_roc_auc": 0.7197,
+      "test_roc_auc": 0.7249,
+      "train_minus_cv": 0.0121,
+      "cv_minus_test": -0.0052,
+      "overfit": false
+    }
+  }
+}

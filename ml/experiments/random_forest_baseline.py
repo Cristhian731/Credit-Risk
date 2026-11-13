@@ -4,9 +4,6 @@ import sys
 import joblib
 import numpy as np
 import pandas as pd
-from pathlib import Path
-OUT_DIR = Path(__file__).parent / "artifacts"
-OUT_DIR.mkdir(exist_ok=True)
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
