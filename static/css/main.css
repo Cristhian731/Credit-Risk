@@ -45,3 +45,9 @@ section[id],
   position: relative;
   height: 320px;
 }
+
+/* APA 7 reference list: hanging indent. */
+.apa-reference {
+  padding-left: 2rem;
+  text-indent: -2rem;
+}

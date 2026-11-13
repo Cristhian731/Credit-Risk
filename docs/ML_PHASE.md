@@ -204,8 +204,10 @@ the manifest version fits the column length read from `app/models.py`.
   tab (`/credit/models/#logistic_regression`, `#random_forest`, `#xgboost`, `#comparison`).
   History is not in the menu; it stays linked from the credit pages.
 - Each model has its own partial in `templates/credit/models/` (`_logistic_regression.html`,
-  `_random_forest.html`, `_xgboost.html`). The shared blocks are in `_macros.html`. Every owner
-  replaces the base text of **About this algorithm** (marked `TODO`) in their partial.
+  `_random_forest.html`, `_xgboost.html`). The shared blocks are in `_macros.html`. Each partial
+  has its **About this algorithm** section (how it works, why it fits, strengths and limits, what
+  each hyperparameter does, APA 7 references). The selected hyperparameters and the metrics in the
+  text are template variables read from the JSON artifacts, never typed by hand.
 - The charts are drawn by `static/js/model_charts.js` from the JSON embedded in the page.
 - The credit form says that amounts are in USD and that the income is the **monthly** income.
 
@@ -215,7 +217,7 @@ the manifest version fits the column length read from `app/models.py`.
 |---|---|---|
 | data | Teammate A | `ml/dataset.py`, `ml/evaluate.py`, `notebooks/01_eda.ipynb`, CRISP-DM section of the report; tests `test_ml_dataset.py`, `test_ml_evaluate.py` |
 | ml | Cristhian | `ml/features.py` (`to_model_frame`), `ml/pipelines.py`, `ml/train.py`, `app/credit/services.py` (`ModelRegistry`), PR reviews; tests `test_ml_features.py`, `test_ml_pipelines.py`, `test_ml_train.py`, `test_model_registry.py` |
-| web | Cristhian (shell and comparison), Alejandro (XGBoost tab), Harrison (Random Forest tab) | `app/credit/routes.py` (model pages), `templates/credit/models.html`, navbar, `static/js/model_charts.js`; `templates/credit/models/_xgboost.html` (Alejandro), `_random_forest.html` (Harrison), `_logistic_regression.html` and the Comparison tab in `models.html` (Cristhian); tests `test_credit_models_routes.py`, `test_credit_champion.py` |
+| web | Cristhian | `app/credit/routes.py` (model pages), `templates/credit/models.html`, `templates/credit/models/*.html` (the three tabs and their "About this algorithm" texts), navbar, `static/js/model_charts.js`; tests `test_credit_models_routes.py`, `test_credit_champion.py` |
 
 Shared and protected: `ml/schemas.py` and the example artifacts (contract changes only with
 team agreement); `app/models.py`, `app/services/repository.py` and `app/auth/services.py` are not

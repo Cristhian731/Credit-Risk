@@ -4,7 +4,7 @@
 
 {# One page, four tabs: Logistic Regression, Random Forest, XGBoost and Comparison.
    The tab ids are the model names (and "comparison"), so /credit/models/#xgboost opens the XGBoost tab.
-   Each model has its own partial in templates/credit/models/; its owner writes the "About this algorithm" text. #}
+   Each model has its own partial in templates/credit/models/, with its "About this algorithm" text. #}
 {% block content %}
 {% set manifest = catalog.manifest %}
 {% set tabs = [

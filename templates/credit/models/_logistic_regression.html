@@ -1,11 +1,35 @@
-{# Tab "Logistic Regression". Owner: Cristhian. Metrics, charts and the prediction form come from the shared
-   macros and read the JSON artifacts; the owner only writes the "About this algorithm" text. #}
+{# Tab "Logistic Regression". Metrics, charts and the prediction form come from the shared macros and read the
+   JSON artifacts. The chosen hyperparameters and the metrics in the text are template variables, not typed values. #}
 {% from "credit/models/_macros.html" import model_panel, predict_form, about_section %}
+{% set m = catalog.metrics.logistic_regression %}
+{% set run = (catalog.experiments.models.logistic_regression.runs|selectattr('selected')|first) if catalog.experiments else none %}
+{% set p = run.params if run else m.params %}
 {{ model_panel("logistic_regression", catalog) }}
-{{ about_section(
-     "logistic_regression", "Cristhian",
-     "Logistic regression models the probability of default as a logistic function of a weighted sum of the standardized features. "
-     "It is fast, easy to explain and a natural baseline. Balanced class weights compensate for the low share of defaulters."
-   ) }}
-{{ predict_form("logistic_regression", catalog.metrics.logistic_regression.display_name, active, form, result,
-                field_order, numeric_fields, choice_fields) }}
+{% call about_section("logistic_regression") %}
+  <h4 class="h6 fw-bold">How it works</h4>
+  <p>Logistic regression adds up the standardized features with one weight each and passes the sum through the
+     logistic function, which turns it into a probability of default between 0 and 1. The weights are learned by
+     maximizing the likelihood of the training labels (Cox, 1958; Hosmer et al., 2013), with a penalty that keeps them small.</p>
+  <h4 class="h6 fw-bold">Why it fits this problem</h4>
+  <p>The data are tabular and defaults are rare. Balanced class weights make each default count more during training,
+     which raises the recall of the default class. It is also the natural baseline to judge the other models.</p>
+  <h4 class="h6 fw-bold">Strengths and limits</h4>
+  <p>It is fast, tiny (one weight per feature) and the easiest to explain, because each weight shows how a feature moves the
+     risk. It is sensitive to scale, so the numeric features are standardized, and it only draws linear relations: it cannot
+     capture interactions between features unless they are added by hand.</p>
+  <h4 class="h6 fw-bold">Hyperparameters in this tab</h4>
+  <ul>
+    <li><code>C</code> is the inverse of the penalty strength: a small value shrinks the weights and prevents overfitting,
+        a large one fits the training data more closely. Selected: <code>{{ p.get('C', 'n/a') }}</code>.</li>
+    <li><code>class_weight</code> weights each class by the inverse of its frequency. Selected:
+        <code>{{ m.params.get('class_weight', 'n/a') }}</code>.</li>
+  </ul>
+  <p>With these values the mean cross-validated ROC AUC is {{ '%.3f'|format(m.cv.roc_auc[0]) }} and the recall of the
+     default class is {{ '%.3f'|format(m.cv.recall[0]) }}.</p>
+  <h4 class="h6 fw-bold">References</h4>
+  <ul class="list-unstyled small mb-0">
+    <li class="apa-reference">Cox, D. R. (1958). The regression analysis of binary sequences. <em>Journal of the Royal Statistical Society: Series B (Methodological), 20</em>(2), 215-232. <a href="https://doi.org/10.1111/j.2517-6161.1958.tb00292.x">https://doi.org/10.1111/j.2517-6161.1958.tb00292.x</a></li>
+    <li class="apa-reference">Hosmer, D. W., Lemeshow, S., &amp; Sturdivant, R. X. (2013). <em>Applied logistic regression</em> (3rd ed.). Wiley. <a href="https://doi.org/10.1002/9781118548387">https://doi.org/10.1002/9781118548387</a></li>
+  </ul>
+{% endcall %}
+{{ predict_form("logistic_regression", m.display_name, active, form, result, field_order, numeric_fields, choice_fields) }}
