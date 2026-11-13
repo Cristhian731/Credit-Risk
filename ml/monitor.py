@@ -15,7 +15,7 @@ Output (next to manifest.json):
 PSI (population stability index) compares the share of a batch in each bin with the share of the
 train split in that bin: ``sum((actual - expected) * ln(actual / expected))``. Below 0.1 the
 feature is stable, from 0.1 to 0.25 it must be watched and above 0.25 it is an alert. The test
-split is never used. The SIMULATED batch is generated with a fixed seed from the reference
+split is never used. The SIMULATED batch is created with a fixed seed from the reference
 distribution and carries an intentional drift, so the alert can be seen; it is labeled SIMULATED
 in the report and in the application.
 """
