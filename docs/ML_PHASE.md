@@ -211,6 +211,28 @@ the manifest version fits the column length read from `app/models.py`.
 - The charts are drawn by `static/js/model_charts.js` from the JSON embedded in the page.
 - The credit form says that amounts are in USD and that the income is the **monthly** income.
 
+### Link with the finance module ("Check my credit risk")
+
+The dashboard has a **Check my credit risk** button that opens `/credit/?source=finance`: the credit
+form with the monthly income and the debt-to-income ratio (DTI) already filled in from the user's
+transactions, each with a note that says where it comes from. The user completes the rest and the
+official model gives the result. Nothing is stored: both values are calculated on every read by
+`repository.finance_summary_for_credit`, and there are no schema changes.
+
+- **Monthly income:** average of the monthly income totals of the 3 most recent **complete** calendar
+  months that have at least one income, looking back up to 12 months. The current month is never
+  used. With fewer than 3 months the available ones are used and the page says so; with none, the
+  page explains it and the field stays empty.
+- **DTI:** monthly debt payments divided by the monthly income, in percent (capped at 100, the
+  maximum of the form). The debt payments are the expenses of the categories marked as debt,
+  averaged over the same months. Categories whose name contains `loan`, `credit`, `debt`,
+  `prestamo`, `tarjeta` or `deuda` (ignoring case and accents) come premarked and the user adjusts
+  them. With no category selected the DTI stays empty.
+- **URL:** only the ids of the debt categories travel in the URL (`debt`, plus `apply`). The income and
+  the DTI are never passed as values: they are calculated on the server. Ids that are not the
+  user's own expense categories are ignored. Only the user's own transactions are read.
+- The evaluation saves `monthly_income` and `dti_ratio` as the user sends them, like any evaluation.
+
 ## Ownership
 
 | Stream | Owner | Files |
