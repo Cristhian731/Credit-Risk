@@ -1,0 +1,12 @@
+# Packages installed by notebooks/credit_risk_dimensionality.ipynb (Google Colab or a local venv).
+# Versions match requirements.txt; matplotlib and seaborn are only needed by the notebook.
+# Needs Python 3.12 or newer: numpy 2.5.4 and xgboost-cpu 3.4.1 have no wheels for Python 3.11.
+numpy==2.5.4
+pandas==3.1.1
+scikit-learn==1.9.1
+joblib==1.6.0
+# xgboost-cpu has no macOS wheels; macOS installs the full xgboost package (same module).
+xgboost-cpu==3.4.1; sys_platform != "darwin"
+xgboost==3.4.1; sys_platform == "darwin"
+matplotlib==3.11.2
+seaborn==0.13.2
