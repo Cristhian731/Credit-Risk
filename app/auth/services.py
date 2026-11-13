@@ -19,7 +19,7 @@ MIN_PASSWORD_LENGTH = 8
 
 
 # Identity of the demo user. The account is created by ``flask seed-demo`` and
-# used while AUTH_ENABLED is False; nobody can log in as it (random password).
+# used while AUTH_ENABLED is False. Its password is DEMO_PASSWORD (public, for the demo only).
 DEMO_EMAIL = "demo@creditrisk.local"
 DEMO_USERNAME = "demo user"
 DEMO_USER_MISSING_MESSAGE = "Demo mode needs the demo user. Run: flask --app run seed-demo"

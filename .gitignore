@@ -27,6 +27,9 @@ instance/
 .DS_Store
 Thumbs.db
 
+# Prediction log of the application (JSON lines with financial data of applicants)
+logs/
+
 # Raw datasets (downloaded locally, never committed; see ml/data/README.md)
 ml/data/raw/
 

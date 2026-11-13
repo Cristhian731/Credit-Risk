@@ -1,0 +1,99 @@
+{
+  "generated_at": "2026-11-13T19:53:01Z",
+  "source": "SIMULATED",
+  "simulated": true,
+  "model": "logistic_regression",
+  "artifacts_version": "2026-11-13.1",
+  "reference": {
+    "rows": 204277,
+    "dataset_sha256": "1d7556a9071e7f9e872dc05a0cad174229fb1164b1cf3470ad35eed195c24278"
+  },
+  "batch": {
+    "rows": 2000,
+    "seed": 42,
+    "period": null,
+    "drift_injected": [
+      {
+        "feature": "CreditScore",
+        "kind": "shift",
+        "amount": -80
+      },
+      {
+        "feature": "LoanAmount",
+        "kind": "scale",
+        "amount": 1.15
+      }
+    ]
+  },
+  "thresholds": {
+    "stable_below": 0.1,
+    "alert_above": 0.25
+  },
+  "psi": {
+    "Age": {
+      "value": 0.004275,
+      "status": "stable"
+    },
+    "Income": {
+      "value": 0.002203,
+      "status": "stable"
+    },
+    "LoanAmount": {
+      "value": 0.114973,
+      "status": "watch"
+    },
+    "CreditScore": {
+      "value": 0.845667,
+      "status": "alert"
+    },
+    "MonthsEmployed": {
+      "value": 0.007063,
+      "status": "stable"
+    },
+    "NumCreditLines": {
+      "value": 0.001137,
+      "status": "stable"
+    },
+    "LoanTerm": {
+      "value": 3.2e-05,
+      "status": "stable"
+    },
+    "DTIRatio": {
+      "value": 0.006498,
+      "status": "stable"
+    },
+    "EmploymentType": {
+      "value": 0.001709,
+      "status": "stable"
+    }
+  },
+  "overall_status": "alert",
+  "features_in_alert": [
+    "CreditScore"
+  ],
+  "features_to_watch": [
+    "LoanAmount"
+  ],
+  "labels": {
+    "reference": {
+      "Approved": 0.288926,
+      "Medium Risk": 0.57258,
+      "High Risk": 0.138493
+    },
+    "batch": {
+      "Approved": 0.238,
+      "Medium Risk": 0.5725,
+      "High Risk": 0.1895
+    },
+    "difference": {
+      "Approved": -0.050926,
+      "Medium Risk": -8e-05,
+      "High Risk": 0.051007
+    }
+  },
+  "risk": {
+    "reference_mean": 0.44833,
+    "batch_mean": 0.478934
+  },
+  "recommendation": "Alert: investigate the features in alert, check the data source and decide whether to retrain. This batch is SIMULATED with an intentional drift: it only demonstrates the procedure."
+}

@@ -45,13 +45,16 @@ def test_seed_demo_does_not_touch_real_users(app):
     assert User.query.count() == 2
 
 
-def test_nobody_can_log_in_as_the_demo_user(app, client):
+def test_only_the_configured_demo_password_logs_in_as_the_demo_user(app, client):
     run_seed(app)
     app.config["AUTH_ENABLED"] = True
     for password in ("", "demo", "password", DEMO_USERNAME, "a-long-password"):
         client.post("/auth/login", data={"email": DEMO_EMAIL, "password": password})
         with client.session_transaction() as client_session:
             assert "user_id" not in client_session
+    client.post("/auth/login", data={"email": DEMO_EMAIL, "password": app.config["DEMO_PASSWORD"]})
+    with client.session_transaction() as client_session:
+        assert "user_id" in client_session
 
 
 def test_the_demo_email_cannot_be_registered(app):

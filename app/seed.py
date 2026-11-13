@@ -33,17 +33,26 @@ DEMO_TRANSACTIONS = [
 ]
 
 
-def ensure_demo_user():
+def ensure_demo_user(password=None):
     """Return ``(user, created)``; the demo user is created if it does not exist.
 
-    Its password is random and never shown, so nobody can log in as it: it only
-    owns the data that the app shows while AUTH_ENABLED is False.
+    With ``password`` (``flask seed-demo`` passes ``DEMO_PASSWORD``) the demo account can log in with
+    it, and running the command again sets it to the current value. Without it the password is
+    random and never shown, so nobody can log in as the demo user: it only owns the data that the
+    app shows while AUTH_ENABLED is False.
     """
     user = get_demo_user()
     if user is not None:
+        if password:
+            user.set_password(password)
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                raise
         return user, False
     user = User(username=DEMO_USERNAME, email=DEMO_EMAIL)
-    user.set_password(secrets.token_urlsafe(32))
+    user.set_password(password or secrets.token_urlsafe(32))
     db.session.add(user)
     try:
         db.session.commit()
@@ -53,12 +62,12 @@ def ensure_demo_user():
     return user, True
 
 
-def seed_demo():
+def seed_demo(password=None):
     """Create the demo user and, if it has no transactions yet, the sample ones.
 
     Running it again never duplicates data. Returns what it did.
     """
-    user, created = ensure_demo_user()
+    user, created = ensure_demo_user(password)
     added = 0
     if not repository.list_transactions(user.id):
         for transaction in DEMO_TRANSACTIONS:

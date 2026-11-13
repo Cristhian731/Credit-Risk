@@ -1,0 +1,98 @@
+{% extends "methodology/_base.html" %}
+{% from "methodology/_macros.html" import pair, pending %}
+
+{% block page %}
+{% set ex = a.experiments %}
+<h1 class="fw-bold">Phase 3 &middot; {{ title }}</h1>
+<p class="text-muted">Three models, trained and tuned under the same conditions.</p>
+
+<section class="card p-4 mb-3" data-testid="models">
+  <h2 class="h4 fw-bold">The models and why they were chosen</h2>
+  <p>The problem is binary classification on tabular data with imbalanced classes. Three families were compared, from the simplest to the most flexible:</p>
+  <ul>
+    <li><strong><a href="{{ url_for('credit.models') }}#logistic_regression">Logistic Regression</a></strong>: a linear model with a probabilistic interpretation. It is fast, tiny and easy to explain, and it is the reference of the comparison.</li>
+    <li><strong><a href="{{ url_for('credit.models') }}#random_forest">Random Forest</a></strong>: an average of many decision trees. It captures non-linear relations and interactions without scaling the data.</li>
+    <li><strong><a href="{{ url_for('credit.models') }}#xgboost">XGBoost</a></strong>: gradient boosted trees, very effective on tabular data, with class imbalance handled by a positive class weight.</li>
+  </ul>
+  <p class="mb-0">The three models read the same {{ d.n_model_features }} features and use the same split, preprocessing and cross-validation. A single command (<code>python -m ml.train</code>) trains all of them, so nobody retrains a model separately and the pages of the application only display its results.</p>
+</section>
+
+{% if ex %}
+<section class="card p-4 mb-3" data-testid="configurations">
+  <h2 class="h4 fw-bold">Features, parameters and configurations</h2>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Model</th><th>Preprocessing</th><th>Class imbalance</th><th>Fixed settings</th></tr></thead>
+    <tbody>
+      <tr><td>Logistic Regression</td><td>Median imputation, standard scaling, one-hot encoding</td><td>{{ a.metrics.logistic_regression.params.class_weight }} class weights</td><td>L2 penalty, <code>max_iter</code> = {{ a.metrics.logistic_regression.params.max_iter }}</td></tr>
+      <tr><td>Random Forest</td><td>Median imputation, one-hot encoding</td><td>{{ a.metrics.random_forest.params.class_weight }} class weights</td><td>Bounded trees so that the saved model stays small</td></tr>
+      <tr><td>XGBoost</td><td>Median imputation, one-hot encoding</td><td><code>scale_pos_weight</code> = {{ '%.2f'|format(a.metrics.xgboost.params.scale_pos_weight) }} (repaid / defaulted loans in train)</td><td>Histogram tree method, logistic objective</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h6 fw-bold">Search spaces and selected values</h3>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Model</th><th>Hyperparameter</th><th>Values searched</th><th>Selected</th></tr></thead>
+    <tbody>
+      {% for name in model_names %}
+        {% set e = ex.models[name] %}
+        {% set best = e.runs|selectattr('selected')|first %}
+        {% for key, values in e.search_space.items() %}
+          <tr>
+            <td>{{ d.display_names[name] if loop.first else '' }}</td>
+            <td><code>{{ key }}</code></td>
+            <td>{{ values|join(', ') }}</td>
+            <td><strong>{{ best.params[key] }}</strong></td>
+          </tr>
+        {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card p-4 mb-3" data-testid="validation">
+  <h2 class="h4 fw-bold">Validation and hyperparameter tuning</h2>
+  <ul>
+    <li><strong>Data used.</strong> {{ ex.protocol.selection_data }}</li>
+    <li><strong>The test split.</strong> {{ ex.protocol.test_usage }}</li>
+    <li><strong>Scoring.</strong> {{ ex.protocol.scoring }}</li>
+    <li><strong>Search.</strong> {{ ex.protocol.search }} Seed {{ ex.protocol.random_state }}.</li>
+  </ul>
+  <p class="mb-0">In total {{ ex.models.values()|map(attribute='runs')|map('length')|sum }} configurations were evaluated in {{ '%.1f'|format(ex.total_seconds / 60) }} minutes. Every run is in <code>ml/artifacts/experiments.json</code> and in the tab of its model.</p>
+</section>
+
+{% for name in model_names %}
+{% set e = ex.models[name] %}
+<section class="card p-4 mb-3" data-testid="runs-{{ name }}">
+  <h3 class="h5 fw-bold">{{ d.display_names[name] }}: {{ e.n_candidates }} runs ({{ e.search_seconds }} s)</h3>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>#</th><th>Hyperparameters</th><th class="text-end">CV ROC AUC</th><th class="text-end">CV recall</th><th class="text-end">Fit time per fold (s)</th></tr></thead>
+      <tbody>
+        {% for run in e.runs %}
+          <tr class="{{ 'table-success' if run.selected }}">
+            <td>{{ run.run }}</td>
+            <td><code>{% for key, value in run.params.items() %}{{ key }}={{ value }}{{ ', ' if not loop.last }}{% endfor %}</code></td>
+            <td class="text-end">{{ pair(run.cv.roc_auc) }}</td><td class="text-end">{{ pair(run.cv.recall) }}</td><td class="text-end">{{ run.fit_seconds }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endfor %}
+{% else %}
+  {{ pending("The experiments are not available (ml/artifacts/experiments.json).") }}
+{% endif %}
+
+<section class="card p-4 mb-3" data-testid="domain-decisions">
+  <h2 class="h4 fw-bold">Decisions informed by the domain</h2>
+  <ul class="mb-0">
+    <li><strong>Class imbalance.</strong> Defaults are a minority, so the models weight the default class and the recall of that class is a selection criterion, because missing a defaulter is the costly error.</li>
+    <li><strong>Ranges.</strong> The values of the form are clipped to the ranges seen in the dataset
+      ({% for column, range in d.clip_ranges.items() %}{{ column }} {{ range[0] }} to {{ range[1] }}{{ ', ' if not loop.last }}{% endfor %}), so the models never receive values they were not trained on.</li>
+    <li><strong>Units.</strong> The dataset income is annual, so the monthly income of the form is multiplied by 12; the debt-to-income ratio of the form is a percentage and the model uses a ratio.</li>
+    <li><strong>Protected attributes.</strong> None is added. The age is used and audited by age range (Phase 4).</li>
+    <li><strong>Deployment constraints.</strong> The hosting plan has little memory, so the models are small (the artifacts stay under 20 MB) and the application keeps at most one model loaded.</li>
+  </ul>
+</section>
+{% endblock %}

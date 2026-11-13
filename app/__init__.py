@@ -8,6 +8,7 @@ from ml.features import ARTIFACTS_DIR, EXAMPLE_ARTIFACTS_DIR
 
 from .auth.services import auth_enabled, get_current_user
 from .cli import register_cli
+from .credit.prediction_log import PredictionLog
 from .credit.services import ModelRegistry, PredictionService
 from .errors import register_error_handlers
 from .extensions import csrf, db, migrate
@@ -58,10 +59,12 @@ def create_app(config_name=None):
         medium_max=app.config["CREDIT_MEDIUM_MAX_RISK"],
     )
     # Trained models (ML phase). Loads nothing at start-up; see ModelRegistry.
+    app.extensions["prediction_log"] = PredictionLog(app.config["PREDICTION_LOG_PATH"])
     app.extensions["model_registry"] = ModelRegistry(
         artifacts_dir=ARTIFACTS_DIR,
         example_dir=EXAMPLE_ARTIFACTS_DIR,
         fallback=app.extensions["credit_predictor"],
+        prediction_log=app.extensions["prediction_log"],
     )
 
     register_blueprints(app)
@@ -82,9 +85,11 @@ def register_blueprints(app):
     from .credit import bp as credit_bp
     from .dashboard import bp as dashboard_bp
     from .main import bp as main_bp
+    from .methodology import bp as methodology_bp
     from .transactions import bp as transactions_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(methodology_bp)
     app.register_blueprint(transactions_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(credit_bp)

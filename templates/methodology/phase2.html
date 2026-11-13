@@ -1,0 +1,118 @@
+{% extends "methodology/_base.html" %}
+{% from "methodology/_macros.html" import pair, pct, figure, pending %}
+
+{% block page %}
+{% set r = a.data_report %}
+{% set dm = a.dimensionality %}
+<h1 class="fw-bold">Phase 2 &middot; {{ title }}</h1>
+<p class="text-muted">From the raw table to the inputs of the models, with evidence before and after.</p>
+
+<section class="card p-4 mb-3" data-testid="features">
+  <h2 class="h4 fw-bold">Selection and justification of the features</h2>
+  <p>The models use the {{ d.n_model_features }} dataset columns that the application form asks for, so that the application and the model stay consistent: <code>{{ d.model_features|join('</code>, <code>'|safe) }}</code>.</p>
+  <ul class="mb-0">
+    <li><strong>Why not InterestRate.</strong> The lender sets the interest rate after assessing the risk, so using it would feed the decision into the model. It is also not a field of the form.</li>
+    <li><strong>Why not Education, MaritalStatus, HasMortgage, HasDependents, LoanPurpose and HasCoSigner{% if r %} (and the {{ d.n_unused_predictors }} unused predictor columns in total){% endif %}.</strong> The form does not ask for them and some of them are sensitive. The price is a lower ROC AUC than a model that uses every column.</li>
+    <li><strong>Protected attributes.</strong> Gender is not in the dataset and no protected attribute is added. The age is used and its effect is analysed in Phase 4.</li>
+    <li><strong>Income.</strong> The dataset income is annual (it ranges from {{ '{:,.0f}'.format(r.before.outliers.Income.min) if r else '...' }} to {{ '{:,.0f}'.format(r.before.outliers.Income.max) if r else '...' }}), so the application multiplies the monthly income of the form by 12 before sending it to the model.</li>
+  </ul>
+</section>
+
+{% if r %}
+<section class="card p-4 mb-3" data-testid="data-report">
+  <h2 class="h4 fw-bold">Data quality: before and after</h2>
+  <p>Missing values, duplicates, inconsistencies and outliers were detected and treated; the full evidence is in <code>ml/artifacts/data_report.json</code>.</p>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Check</th><th class="text-end">Before</th><th class="text-end">After</th></tr></thead>
+    <tbody>
+      <tr><td>Rows</td><td class="text-end">{{ '{:,}'.format(r.before.rows) }}</td><td class="text-end">{{ '{:,}'.format(r.after.rows) }}</td></tr>
+      <tr><td>Missing cells</td><td class="text-end">{{ '{:,}'.format(r.before.null_cells) }}</td><td class="text-end">{{ '{:,}'.format(r.after.null_cells) }}</td></tr>
+      <tr><td>Duplicated rows</td><td class="text-end">{{ '{:,}'.format(r.before.duplicate_rows) }}</td><td class="text-end">{{ '{:,}'.format(r.after.duplicate_rows) }}</td></tr>
+      <tr><td>Repeated loan identifiers</td><td class="text-end">{{ '{:,}'.format(r.before.duplicate_ids) }}</td><td class="text-end">{{ '{:,}'.format(r.after.duplicate_ids) }}</td></tr>
+      <tr><td>Default rate</td><td class="text-end">{{ pct(r.before.default_rate, 2) }}</td><td class="text-end">{{ pct(r.after.default_rate, 2) }}</td></tr>
+      {% for rule, count in r.before.inconsistencies.items() %}
+        <tr><td>Inconsistency: {{ rule|replace('_', ' ') }}</td><td class="text-end">{{ '{:,}'.format(count) }}</td><td class="text-end">{{ '{:,}'.format(r.after.inconsistencies[rule]) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="small">The rows with impossible months of employment ({{ '{:,}'.format(d.inconsistent_rows) }}, {{ '%.1f'|format(d.inconsistent_percent) }}%) were <strong>kept</strong>: the feature is used as reported and the dataset documentation does not explain how it was generated. It is a limitation (Phase 1).</p>
+
+  <h3 class="h6 fw-bold">Outliers (1.5 &times; IQR rule)</h3>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Variable</th><th class="text-end">Min</th><th class="text-end">Median</th><th class="text-end">Max</th><th class="text-end">Outliers</th></tr></thead>
+      <tbody>
+        {% for name, o in r.before.outliers.items() %}
+          <tr><td>{{ name }}</td><td class="text-end">{{ '{:,.2f}'.format(o.min) }}</td><td class="text-end">{{ '{:,.2f}'.format(o.median) }}</td><td class="text-end">{{ '{:,.2f}'.format(o.max) }}</td><td class="text-end">{{ '{:,}'.format(o.outliers) }} ({{ '%.2f'|format(o.outlier_percent) }}%)</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mb-0 small">{% if d.no_outliers %}No variable has outliers. Outliers would be kept anyway: they are real applicants, trees are insensitive to scale and the logistic regression standardizes its inputs.{% else %}Outliers are kept: they are real applicants, trees are insensitive to scale and the logistic regression standardizes its inputs.{% endif %}</p>
+</section>
+
+<section class="card p-4 mb-3" data-testid="transformations">
+  <h2 class="h4 fw-bold">Transformations, encoding and scaling</h2>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Step</th><th>Applied to</th><th>Detail and justification</th></tr></thead>
+    <tbody>
+      {% for t in r.transformations %}
+        <tr><td>{{ t.step|replace('_', ' ') }}</td><td>{{ t.columns|join(', ') if t.columns|length < 4 else (t.columns|length ~ ' columns') }}</td><td>{{ t.detail }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="mb-0 small"><strong>Feature engineering.</strong> There is none beyond unit conversions (monthly to annual income, years to months of employment, percent to ratio of the debt-to-income ratio) and clipping of the form values to the ranges seen in training, so that the models never receive values they were not trained on.</p>
+</section>
+
+<section class="card p-4 mb-3" data-testid="partitions">
+  <h2 class="h4 fw-bold">Partitions and validation</h2>
+  <ul>
+    <li><strong>Train / test.</strong> {{ pct(1 - r.split.test_size, 0) }} / {{ pct(r.split.test_size, 0) }}, stratified on <code>{{ r.split.stratified_on }}</code>, seed {{ r.split.random_state }}: {{ '{:,}'.format(r.split.train_rows) }} train rows ({{ pct(r.split.train_default_rate, 2) }} defaults) and {{ '{:,}'.format(r.split.test_rows) }} test rows ({{ pct(r.split.test_default_rate, 2) }} defaults). The test split only reports the final metrics.</li>
+    <li><strong>Validation.</strong> {{ a.experiments.protocol.cv_folds if a.experiments else '5' }}-fold stratified cross-validation on the train split, for the hyperparameters and the choice of the official model.</li>
+  </ul>
+  <p class="mb-1"><strong>The preprocessing is fitted only with the train data</strong> because it is part of the pipeline of each model, which is fitted inside every cross-validation fold:</p>
+  <pre class="bg-light border rounded p-3 small mb-0">Pipeline
+  preprocessing: ColumnTransformer
+    numeric      : median imputation{{ ' + standard scaling (logistic regression only)' }}
+    categorical  : most-frequent imputation + one-hot encoding (EmploymentType, unknown categories ignored)
+  classifier     : LogisticRegression | RandomForestClassifier | XGBClassifier</pre>
+</section>
+{% else %}
+  {{ pending("The data report is not available (ml/artifacts/data_report.json), so the quality evidence cannot be shown.") }}
+{% endif %}
+
+<section class="card p-4 mb-3" data-testid="dimensionality">
+  <h2 class="h4 fw-bold">Dimensionality reduction</h2>
+  <p>
+    PCA and t-SNE were analysed in a Google Colab notebook that reuses the data code, the pipelines and the cross-validation of the training:
+    <a href="{{ colab_url }}" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
+  </p>
+  {% if dm %}
+    <p>Only the train split is used. {{ dm.interpretation[0] }}</p>
+    {{ figure('pca_scree.png', 'PCA scree plot: variance explained by each component and cumulative variance') }}
+    {{ figure('pca_projection.png', 'Projection on the first two principal components, colored by Default') }}
+    <h3 class="h6 fw-bold">t-SNE</h3>
+    <p>Stratified sample of {{ '{:,}'.format(dm.tsne.sample_rows) }} applicants, perplexity {{ dm.tsne.perplexity }}, seed {{ dm.tsne.random_state }}, final divergence {{ '%.2f'|format(dm.tsne.kl_divergence) }}. {{ dm.interpretation[3] }}</p>
+    {{ figure('tsne_projection.png', 't-SNE of a stratified sample, colored by Default') }}
+    <h3 class="h6 fw-bold">Experiment: the champion on principal components</h3>
+    <table class="table table-sm align-middle">
+      <thead><tr><th class="text-end">Components</th><th class="text-end">Variance kept</th><th class="text-end">CV ROC AUC</th><th class="text-end">CV recall</th></tr></thead>
+      <tbody>
+        {% for v in dm.experiments.pca_components.variants %}
+          <tr><td class="text-end">{{ v.n_components }}</td><td class="text-end">{{ pct(v.explained_variance, 1) }}</td><td class="text-end">{{ pair(v.cv.roc_auc) }}</td><td class="text-end">{{ pair(v.cv.recall) }}</td></tr>
+        {% endfor %}
+        <tr class="table-success"><td class="text-end">Original {{ dm.experiments.pca_components.baseline.n_features }} features</td><td class="text-end">&ndash;</td><td class="text-end">{{ pair(dm.experiments.pca_components.baseline.cv.roc_auc) }}</td><td class="text-end">{{ pair(dm.experiments.pca_components.baseline.cv.recall) }}</td></tr>
+      </tbody>
+    </table>
+    {{ figure('pca_experiment.png', 'The champion on principal components against the original features (5-fold CV, train split)') }}
+    <h3 class="h6 fw-bold">How the reduction affects the model</h3>
+    <p class="mb-1">{{ dm.interpretation[1] }}</p>
+    <p class="mb-3">{{ dm.interpretation[2] }}</p>
+    <p class="mb-0 small">The experiment without the age feature is in <a href="{{ url_for('methodology.phase', number=4) }}#without-age">Phase 4</a>. Exploratory figures: target distribution, default rate by feature and correlations.</p>
+    {{ figure('eda_default_rate_by_feature.png', 'Default rate by group of each numeric feature (train split)') }}
+    {{ figure('eda_correlations.png', 'Correlation matrix of the numeric features and the target (train split)') }}
+  {% else %}
+    {{ pending("The dimensionality report is not available (ml/artifacts/dimensionality_report.json). Run the notebook linked above.") }}
+  {% endif %}
+</section>
+{% endblock %}

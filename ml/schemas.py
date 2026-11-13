@@ -67,6 +67,15 @@ OVERFITTING_FILENAME = "overfitting.json"
 SUBGROUPS_FILENAME = "subgroups.json"
 # Written by notebooks/credit_risk_dimensionality.ipynb, not by ml.train.
 DIMENSIONALITY_REPORT_FILENAME = "dimensionality_report.json"
+# Written by ml.monitor: the train distribution used as reference, and the report of a batch.
+REFERENCE_DISTRIBUTION_FILENAME = "reference_distribution.json"
+MONITORING_REPORT_FILENAME = "monitoring_report.json"
+
+# Monitoring: PSI below PSI_STABLE is stable, up to PSI_ALERT is "watch", above is an alert.
+PSI_STABLE = 0.1
+PSI_ALERT = 0.25
+RISK_LABELS = ("Approved", "Medium Risk", "High Risk")
+PSI_STATUSES = ("stable", "watch", "alert")
 
 METRICS_KEYS = (
     "model",
@@ -466,6 +475,104 @@ def validate_dimensionality_report(report):
     return errors
 
 
+def psi_status(value):
+    """Status of a PSI value: ``stable`` (< 0.1), ``watch`` (0.1 to 0.25) or ``alert`` (> 0.25)."""
+    if value < PSI_STABLE:
+        return "stable"
+    return "watch" if value <= PSI_ALERT else "alert"
+
+
+def validate_reference_distribution(reference):
+    """Validate reference_distribution.json: statistics of the train split used as PSI reference.
+
+    Format::
+
+        {
+          "version": "2026-11-13.1", "feature_set": "v2-loan-default",
+          "dataset": {"sha256": "<64 hex>", "train_rows": int},
+          "bins": 10,
+          "numeric": {"Age": {"cuts": [...], "fractions": [...], "min": x, "max": x, "mean": x, "integer": bool}},
+          "categorical": {"EmploymentType": {"Full-time": 0.25, ...}},
+          "labels": {"model": "logistic_regression", "thresholds": {...}, "rates": {"Approved": x, ...},
+                     "mean_risk": x},
+          "note": "..."
+        }
+
+    Only statistics: there are no rows of the dataset.
+    """
+    keys = ("version", "feature_set", "dataset", "bins", "numeric", "categorical", "labels", "note")
+    errors = _check_keys(reference, keys, "reference")
+    if errors:
+        return errors
+    errors += _check_keys(reference["dataset"], ("sha256", "train_rows"), "reference.dataset")
+    if reference["feature_set"] not in FEATURE_SETS:
+        errors.append("reference.feature_set must be one of the feature sets")
+    numeric = reference["numeric"]
+    if not isinstance(numeric, dict) or not numeric:
+        return errors + ["reference.numeric must be a non-empty object"]
+    for name, item in numeric.items():
+        where = f"reference.numeric[{name!r}]"
+        errors += _check_keys(item, ("cuts", "fractions", "min", "max", "mean", "integer"), where)
+        if isinstance(item, dict) and isinstance(item.get("cuts"), list) and isinstance(item.get("fractions"), list):
+            if len(item["fractions"]) != len(item["cuts"]) + 1:
+                errors.append(f"{where}.fractions must have one more value than cuts")
+            elif abs(sum(item["fractions"]) - 1) > 1e-3:
+                errors.append(f"{where}.fractions must add up to 1")
+            if item["cuts"] != sorted(item["cuts"]):
+                errors.append(f"{where}.cuts must be sorted")
+    for name, fractions in reference["categorical"].items():
+        if not isinstance(fractions, dict) or abs(sum(fractions.values()) - 1) > 1e-3:
+            errors.append(f"reference.categorical[{name!r}] must be fractions that add up to 1")
+    labels = reference["labels"]
+    errors += _check_keys(labels, ("model", "thresholds", "rates", "mean_risk"), "reference.labels")
+    if isinstance(labels, dict) and isinstance(labels.get("rates"), dict):
+        if set(labels["rates"]) != set(RISK_LABELS) or abs(sum(labels["rates"].values()) - 1) > 1e-3:
+            errors.append("reference.labels.rates must have the three risk labels and add up to 1")
+    return errors
+
+
+def validate_monitoring_report(report):
+    """Validate monitoring_report.json: PSI per feature and label rates of a batch against train.
+
+    ``source`` is ``SIMULATED`` for the generated batch (``simulated`` is then true and
+    ``batch.drift_injected`` lists the drift put on purpose) or ``PREDICTION_LOG`` for a real log.
+    """
+    keys = ("generated_at", "source", "simulated", "model", "artifacts_version", "reference", "batch",
+            "thresholds", "psi", "overall_status", "features_in_alert", "features_to_watch", "labels",
+            "risk", "recommendation")
+    errors = _check_keys(report, keys, "monitoring_report")
+    if errors:
+        return errors
+    if report["source"] not in ("SIMULATED", "PREDICTION_LOG"):
+        errors.append("monitoring_report.source must be SIMULATED or PREDICTION_LOG")
+    if report["simulated"] != (report["source"] == "SIMULATED"):
+        errors.append("monitoring_report.simulated must be true exactly when source is SIMULATED")
+    if not isinstance(report["generated_at"], str) or not _ISO_UTC.fullmatch(report["generated_at"]):
+        errors.append("monitoring_report.generated_at must be an ISO 8601 UTC timestamp")
+    errors += _check_keys(report["reference"], ("rows", "dataset_sha256"), "monitoring_report.reference")
+    batch = report["batch"]
+    errors += _check_keys(batch, ("rows", "seed", "period", "drift_injected"), "monitoring_report.batch")
+    if isinstance(batch, dict) and report["simulated"] and not batch.get("drift_injected"):
+        errors.append("a SIMULATED report must list the drift it injected")
+    errors += _check_keys(report["thresholds"], ("stable_below", "alert_above"), "monitoring_report.thresholds")
+    psi = report["psi"]
+    if not isinstance(psi, dict) or not psi:
+        return errors + ["monitoring_report.psi must be a non-empty object"]
+    for name, item in psi.items():
+        where = f"monitoring_report.psi[{name!r}]"
+        errors += _check_keys(item, ("value", "status"), where)
+        if isinstance(item, dict) and _is_number(item.get("value")):
+            if item.get("status") != psi_status(item["value"]):
+                errors.append(f"{where}.status does not match the value and the thresholds")
+        else:
+            errors.append(f"{where}.value must be a number")
+    if report["overall_status"] not in PSI_STATUSES:
+        errors.append("monitoring_report.overall_status must be stable, watch or alert")
+    errors += _check_keys(report["labels"], ("reference", "batch", "difference"), "monitoring_report.labels")
+    errors += _check_keys(report["risk"], ("reference_mean", "batch_mean"), "monitoring_report.risk")
+    return errors
+
+
 def load_json(path):
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
@@ -523,13 +630,16 @@ def validate_artifacts(directory, require_models=False):
         elif require_models:
             errors.append(f"{path} does not exist")
 
-    # Optional: produced by the notebook, validated when present.
-    report_path = os.path.join(directory, DIMENSIONALITY_REPORT_FILENAME)
-    if os.path.exists(report_path):
-        errors += [
-            f"{DIMENSIONALITY_REPORT_FILENAME}: {error}"
-            for error in validate_dimensionality_report(load_json(report_path))
-        ]
+    # Optional: produced by the notebook and by ml.monitor, validated when present.
+    optional = (
+        (DIMENSIONALITY_REPORT_FILENAME, validate_dimensionality_report),
+        (REFERENCE_DISTRIBUTION_FILENAME, validate_reference_distribution),
+        (MONITORING_REPORT_FILENAME, validate_monitoring_report),
+    )
+    for filename, validator in optional:
+        path = os.path.join(directory, filename)
+        if os.path.exists(path):
+            errors += [f"{filename}: {error}" for error in validator(load_json(path))]
 
     if require_models and artifacts_size(directory) >= MAX_ARTIFACTS_BYTES:
         errors.append(f"{directory} is {artifacts_size(directory)} bytes; the limit is {MAX_ARTIFACTS_BYTES}")

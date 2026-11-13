@@ -1,0 +1,92 @@
+{% extends "methodology/_base.html" %}
+{% from "methodology/_macros.html" import pair, pct %}
+
+{% block page %}
+{% set m = a.metrics[d.champion] %}
+{% set criteria = a.manifest.success_criteria %}
+<h1 class="fw-bold">Credit Risk &middot; Methodology</h1>
+<p class="lead text-muted">A machine learning project that estimates the probability that a loan applicant defaults, built with the CRISP-ML(Q) process model.</p>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">The problem</h2>
+  <p>A lender must decide whether an applicant will repay a loan. A wrong approval produces a loss and a wrong rejection takes away a legitimate customer. Models trained on past loans can support that decision by estimating a probability of default for each application, which a credit analyst combines with the rules of the institution.</p>
+  <h2 class="h4 fw-bold mt-3">The objective</h2>
+  <p class="mb-0">Build and evaluate models that estimate the probability of default, choose an official model with a documented and reproducible rule, and make it available in this web application. Every phase of the process is documented in the pages of this section, and every figure on them is read from the files that the training writes.</p>
+</section>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">Team</h2>
+  <ul class="mb-0">
+    {% for person in team %}<li>{{ person }}</li>{% endfor %}
+  </ul>
+</section>
+
+<section class="card p-4 mb-3" data-testid="results-summary">
+  <h2 class="h4 fw-bold">Results at a glance</h2>
+  <p>
+    Official model: <strong>{{ d.champion_display }}</strong>
+    (version {{ a.manifest.version }}, trained {{ a.manifest.trained_at }}). It was chosen with cross-validation on the train split only:
+    {{ a.manifest.selection_rule }}
+  </p>
+  <div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3"><div class="border rounded p-3 h-100"><div class="text-muted small">CV ROC AUC</div><div class="fs-4 fw-bold">{{ pair(m.cv.roc_auc) }}</div></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="border rounded p-3 h-100"><div class="text-muted small">CV recall (default class)</div><div class="fs-4 fw-bold">{{ pair(m.cv.recall) }}</div></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="border rounded p-3 h-100"><div class="text-muted small">Test ROC AUC</div><div class="fs-4 fw-bold">{{ '%.3f'|format(m.test.roc_auc) }}</div></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="border rounded p-3 h-100"><div class="text-muted small">Test recall</div><div class="fs-4 fw-bold">{{ '%.3f'|format(m.test.recall) }}</div></div></div>
+  </div>
+  {% if criteria %}
+    <h3 class="h6 fw-bold">Success criteria</h3>
+    <table class="table table-sm mb-2">
+      <thead><tr><th>Criterion</th><th class="text-end">Threshold</th><th class="text-end">Value</th><th>Result</th></tr></thead>
+      <tbody>
+        {% for item in criteria.results %}
+          <tr>
+            <td>{{ item.criterion }}</td>
+            <td class="text-end">{{ item.threshold }}</td>
+            <td class="text-end">{{ item.value }}</td>
+            <td>{% if item.passed %}<span class="badge text-bg-success">Pass</span>{% else %}<span class="badge text-bg-danger">Fail</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+  <a href="{{ url_for('methodology.phase', number=4) }}">See the evaluation of the models (Phase 4)</a>
+</section>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">Links</h2>
+  <ul class="mb-0">
+    <li>Repository: <a href="{{ repository_url }}" rel="noopener">{{ repository_url }}</a></li>
+    <li>Dimensionality reduction notebook (Google Colab): <a href="{{ colab_url }}" rel="noopener">Open in Colab</a></li>
+    <li>Demo (this application): <a href="{{ app_url }}">{{ app_url }}</a></li>
+  </ul>
+</section>
+
+<section class="card p-4 mb-3" data-testid="demo-account">
+  <h2 class="h4 fw-bold">Demo account</h2>
+  {% if demo.password %}
+    <p>Log in with this account to try the credit evaluation, the model pages and the finance module.</p>
+    <table class="table table-sm w-auto mb-2">
+      <tbody>
+        <tr><th class="fw-normal">E-mail</th><td><code data-testid="demo-email">{{ demo.email }}</code></td></tr>
+        <tr><th class="fw-normal">Password</th><td><code data-testid="demo-password">{{ demo.password }}</code></td></tr>
+      </tbody>
+    </table>
+    <p class="text-muted small mb-2">The account is shared and public on purpose, only for the demo: do not enter real data. <a href="{{ url_for('auth.login') }}">Log in</a>.</p>
+  {% else %}
+    <p class="text-muted mb-0">The demo account is not configured in this installation (the DEMO_PASSWORD variable is not set).</p>
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">The six phases</h2>
+  <ol class="mb-0">
+    <li><a href="{{ url_for('methodology.phase', number=1) }}">Phase 1 &middot; Business and Data Understanding</a>: the problem, the data and the success criteria.</li>
+    <li><a href="{{ url_for('methodology.phase', number=2) }}">Phase 2 &middot; Data Engineering</a>: data quality, transformations, partitions and dimensionality reduction.</li>
+    <li><a href="{{ url_for('methodology.phase', number=3) }}">Phase 3 &middot; Model Engineering</a>: the three models and the hyperparameter search.</li>
+    <li><a href="{{ url_for('methodology.phase', number=4) }}">Phase 4 &middot; Model Evaluation</a>: metrics, overfitting, bias by group and expert review.</li>
+    <li><a href="{{ url_for('methodology.phase', number=5) }}">Phase 5 &middot; Deployment</a>: how the models are served and used.</li>
+    <li><a href="{{ url_for('methodology.phase', number=6) }}">Phase 6 &middot; Monitoring and Maintenance</a>: drift detection and maintenance.</li>
+  </ol>
+</section>
+{% endblock %}

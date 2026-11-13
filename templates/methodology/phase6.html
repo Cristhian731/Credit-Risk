@@ -1,0 +1,132 @@
+{% extends "methodology/_base.html" %}
+{% from "methodology/_macros.html" import pct, pending, simulated_banner %}
+
+{% block page %}
+{% set mon = a.monitoring %}
+{% set crit = a.manifest.success_criteria %}
+<h1 class="fw-bold">Phase 6 &middot; {{ title }}</h1>
+<p class="text-muted">How the model is watched after deployment and how it is kept up to date.</p>
+
+<section class="card p-4 mb-3" data-testid="indicators">
+  <h2 class="h4 fw-bold">Indicators of operation and performance</h2>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Indicator</th><th>What it shows</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Predictions per model and per label</strong></td><td>Use of the service and the mix of Approved, Medium Risk and High Risk.</td><td>Prediction log</td></tr>
+      <tr><td><strong>Availability</strong></td><td>Evaluations that fail because a model is not available (the page answers with a message and saves nothing).</td><td>Application log</td></tr>
+      <tr><td><strong>PSI per feature</strong></td><td>Whether the applicants that arrive look like the ones the model was trained on (data drift).</td><td><code>python -m ml.monitor</code></td></tr>
+      <tr><td><strong>Label rates and mean risk</strong></td><td>Whether the share of High Risk and the mean probability move away from the train split.</td><td><code>python -m ml.monitor</code></td></tr>
+      <tr><td><strong>ROC AUC and recall on real outcomes</strong></td><td>Degradation of the performance. It cannot be measured yet: the outcomes of the loans evaluated by the application are not collected, so it is a requirement for a real deployment.</td><td>Feedback (future)</td></tr>
+    </tbody>
+  </table>
+  <h3 class="h6 fw-bold">Prediction log of this installation</h3>
+  {% if log %}
+    <p class="mb-0" data-testid="log-summary">{{ '{:,}'.format(log.predictions) }} predictions logged from {{ log.first }} to {{ log.last }}.
+      By label: {% for label, count in log.by_label.items() %}{{ label }} {{ count }}{{ ', ' if not loop.last }}{% endfor %}.
+      By model: {% for name, count in log.by_model.items() %}{{ d.display_names[name] }} {{ count }}{{ ', ' if not loop.last }}{% endfor %}.</p>
+  {% else %}
+    <p class="text-muted mb-0" data-testid="log-summary">No predictions are logged in this installation yet (the log is created by the first prediction of a trained model).</p>
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3" data-testid="drift">
+  <h2 class="h4 fw-bold">Drift detection with PSI</h2>
+  <p>The population stability index compares, for every feature, the share of a batch of applicants in each bin with the share of the train split in that bin: <code>PSI = sum((actual &minus; expected) &times; ln(actual / expected))</code>. The bins are the deciles of the train split (and the categories of the employment type), stored in <code>ml/artifacts/reference_distribution.json</code>: only statistics, no rows.</p>
+  <table class="table table-sm w-auto">
+    <thead><tr><th>PSI</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td>below {{ psi_thresholds.stable }}</td><td><span class="badge text-bg-success">stable</span></td><td>No action.</td></tr>
+      <tr><td>{{ psi_thresholds.stable }} to {{ psi_thresholds.alert }}</td><td><span class="badge text-bg-warning">watch</span></td><td>Look at the feature at the next scheduled review.</td></tr>
+      <tr><td>above {{ psi_thresholds.alert }}</td><td><span class="badge text-bg-danger">alert</span></td><td>Investigate the data source and decide whether to retrain.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h6 fw-bold">Report</h3>
+  {% if mon %}
+    {% if mon.simulated %}{{ simulated_banner() }}{% endif %}
+    <p>
+      Source: <strong>{{ mon.source }}</strong> &middot; {{ '{:,}'.format(mon.batch.rows) }} rows
+      {% if mon.batch.seed is not none %}&middot; seed {{ mon.batch.seed }}{% endif %}
+      &middot; generated {{ mon.generated_at }} &middot; model {{ d.display_names[mon.model] }} (artifacts {{ mon.artifacts_version }}).
+      Overall status: <span class="badge text-bg-{{ {'stable': 'success', 'watch': 'warning', 'alert': 'danger'}[mon.overall_status] }}" data-testid="overall-status">{{ mon.overall_status }}</span>
+    </p>
+    {% if mon.batch.drift_injected %}
+      <p class="small" data-testid="drift-injected">Drift injected on purpose in the simulated batch:
+        {% for item in mon.batch.drift_injected %}<code>{{ item.feature }}</code> ({{ item.kind }} {{ item.amount }}){{ ', ' if not loop.last }}{% endfor %}.</p>
+    {% endif %}
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>Feature</th><th class="text-end">PSI</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for name, item in mon.psi.items() %}
+              <tr><td>{{ name }}</td><td class="text-end">{{ '%.4f'|format(item.value) }}</td>
+                  <td><span class="badge text-bg-{{ {'stable': 'success', 'watch': 'warning', 'alert': 'danger'}[item.status] }}">{{ item.status }}</span></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="col-lg-6"><div class="chart-box"><canvas id="psi-chart" aria-label="PSI per feature" role="img"></canvas></div></div>
+    </div>
+    <h3 class="h6 fw-bold mt-3">Label rates and mean risk</h3>
+    <table class="table table-sm w-auto">
+      <thead><tr><th></th>{% for label in mon.labels.reference %}<th class="text-end">{{ label }}</th>{% endfor %}<th class="text-end">Mean risk</th></tr></thead>
+      <tbody>
+        <tr><td>Train split</td>{% for label, v in mon.labels.reference.items() %}<td class="text-end">{{ pct(v) }}</td>{% endfor %}<td class="text-end">{{ pct(mon.risk.reference_mean) }}</td></tr>
+        <tr><td>Batch</td>{% for label, v in mon.labels.batch.items() %}<td class="text-end">{{ pct(v) }}</td>{% endfor %}<td class="text-end">{{ pct(mon.risk.batch_mean) }}</td></tr>
+      </tbody>
+    </table>
+    <p class="mb-0"><strong>Recommendation.</strong> {{ mon.recommendation }}</p>
+    <script type="application/json" id="psi-data">{{ {"psi": mon.psi, "thresholds": psi_thresholds, "simulated": mon.simulated}|tojson }}</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/psi_chart.js') }}"></script>
+  {% else %}
+    {{ pending("The monitoring report is not available (ml/artifacts/monitoring_report.json). Create it with: python -m ml.monitor --simulated") }}
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3" data-testid="maintenance">
+  <h2 class="h4 fw-bold">Review, owners and retraining</h2>
+  <ul>
+    <li><strong>Frequency.</strong> A PSI check every week while the demo is in use, a full review (PSI, label rates, errors, feedback) every month, and an extra review after every deployment or retraining.</li>
+    <li><strong>Owners.</strong> Cristhian Stiven Aza Diaz is the owner of the models: he runs the monitoring, reviews its report and decides on retraining. The teammate in charge of the database checks the stored evaluations and the log, and the teammate in charge of the login checks access and the demo account.</li>
+    <li><strong>Retrain when</strong> any of these happens:
+      <ul>
+        <li>a feature stays in alert (PSI above {{ psi_thresholds.alert }}) in two consecutive checks;</li>
+        <li>the share of High Risk or of Approved moves more than 10 percentage points away from the train split;</li>
+        {% if crit %}<li>the performance on new labeled data falls below the success criteria ({% for item in crit.results %}{{ item.criterion }}{{ '; ' if not loop.last }}{% endfor %});</li>{% endif %}
+        <li>the data source, the form or the ranges of the inputs change.</li>
+      </ul></li>
+  </ul>
+  <h3 class="h6 fw-bold">Risks and quality controls</h3>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Risk</th><th>Control</th></tr></thead>
+    <tbody>
+      <tr><td>Data drift: applicants change.</td><td>PSI per feature and label rates against the train split.</td></tr>
+      <tr><td>Model degradation without notice.</td><td>Collect real outcomes and measure ROC AUC and recall against the success criteria.</td></tr>
+      <tr><td>Wrong or incompatible artifacts.</td><td>The artifacts are validated by schema on every training, tests run on every pull request, and the models are pinned to the library versions they were trained with.</td></tr>
+      <tr><td>Age bias.</td><td>Audit by age range (Phase 4), human review of rejections, and the option without age evaluated.</td></tr>
+      <tr><td>Privacy of the applicants.</td><td>The prediction log has no name or document and is kept for a limited time (below).</td></tr>
+      <tr><td>Data inconsistencies.</td><td>The data report documents them; new data must pass the same checks.</td></tr>
+    </tbody>
+  </table>
+  <h3 class="h6 fw-bold">Update procedure</h3>
+  <ol class="mb-0">
+    <li>Retrain with <code>python -m ml.train</code> on the new data (same split, cross-validation and selection rule).</li>
+    <li>Check the schemas, the success criteria, overfitting and the subgroup analysis; compare with the current version.</li>
+    <li>Rebuild the reference distribution (<code>python -m ml.monitor --build-reference</code>) and the monitoring report.</li>
+    <li>Publish through a pull request with passing tests, review it and deploy. Keep the previous artifacts to be able to go back.</li>
+  </ol>
+</section>
+
+<section class="card p-4 mb-3" data-testid="retention">
+  <h2 class="h4 fw-bold">Retention policy of the prediction log</h2>
+  <p>The log holds, for every prediction, the date, the model and version, the nine model inputs (age, income, loan amount, credit score, months employed, credit lines, loan term, debt-to-income ratio and employment type), the probability and the label. It has <strong>no name or document</strong>, but it is financial information about an applicant, so it is treated as sensitive.</p>
+  <ul class="mb-0">
+    <li><strong>How long.</strong> Entries are kept for at most <strong data-testid="retention-days">{{ retention_days }} days</strong> (configurable with <code>PREDICTION_LOG_RETENTION_DAYS</code>). Longer retention needs a new decision of the team.</li>
+    <li><strong>Who accesses it.</strong> Only the owner of the models and the teammates with access to the server. It is never shown in the application (only counts), it is not in the repository (the <code>logs/</code> folder is ignored by git) and it is not shared outside the team.</li>
+    <li><strong>How it is deleted.</strong> Run <code>flask --app run purge-prediction-log</code> at least every month: it deletes the entries older than the retention. To delete everything, remove the file named in <code>PREDICTION_LOG_PATH</code> (an empty value turns the log off). On a hosting plan with a temporary disk the log is also lost at every deployment. A request from an applicant to delete their data is handled by removing the entries of that period.</li>
+    <li><strong>Reports.</strong> The monitoring report keeps only aggregated statistics, which are not personal data.</li>
+  </ul>
+</section>
+{% endblock %}

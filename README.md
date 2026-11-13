@@ -56,6 +56,14 @@ Open http://127.0.0.1:5000. In development authentication is on by default: regi
 and you land on the dashboard. Set `AUTH_ENABLED=false` to run as the demo user instead, after creating it with
 `flask --app run seed-demo` (it also loads a few sample transactions; running it again adds nothing).
 
+The **demo account** is `demo@creditrisk.local` and its password is the `DEMO_PASSWORD` environment variable
+(`demo-password-2026` in development and tests; in production it is required and you define it, for example on
+Render). `seed-demo` sets that password every time it runs, and the public **Methodology** overview shows the
+e-mail and the password. The account is shared and public on purpose, only for the demo: never store real data in it.
+
+The public **Methodology** section (`/methodology/`, no login) has the overview and one page for each CRISP-ML
+phase; every figure on them is read from `ml/artifacts/*.json`.
+
 Run the tests with:
 
 ```bash
@@ -72,7 +80,11 @@ PostgreSQL, after migrating an empty database in both.
 | Command | Purpose |
 |---|---|
 | `flask --app run db upgrade` | Create or update the database schema |
-| `flask --app run seed-demo` | Create the demo user and its sample transactions (safe to run again) |
+| `flask --app run seed-demo` | Create the demo user and its sample transactions, and set its password to `DEMO_PASSWORD` (safe to run again) |
+| `flask --app run purge-prediction-log` | Delete the prediction log entries older than `PREDICTION_LOG_RETENTION_DAYS` |
+| `python -m ml.monitor --simulated` | PSI of a SIMULATED batch against the train distribution; writes `ml/artifacts/monitoring_report.json` |
+| `python -m ml.monitor --log logs/predictions.jsonl` | The same with the real prediction log |
+| `python -m ml.monitor --build-reference` | Rebuild `ml/artifacts/reference_distribution.json` from the dataset (statistics only) |
 | `flask --app run adopt-legacy-db OLD NEW` | Move a database created before migrations existed (see [docs/MIGRATIONS.md](docs/MIGRATIONS.md)) |
 
 ### Configuration
@@ -85,6 +97,9 @@ PostgreSQL, after migrating an empty database in both.
 | `AUTH_ENABLED` | Authentication switch (see below) | `True` in development and production, `False` in testing |
 | `TEST_DATABASE_URL` | Database for the test suite (an empty one; tests create and drop tables) | in-memory SQLite |
 | `LOG_LEVEL`, `LOG_FILE` | Log level and optional rotating log file | `INFO`, none |
+| `DEMO_PASSWORD` | Password of the demo account, set by `seed-demo` and shown in the Methodology overview. **Required in production** (no default there) | `demo-password-2026` in development and tests |
+| `PREDICTION_LOG_PATH` | JSON lines log of the predictions of the trained models (no customer name or document; ignored by git). Empty turns it off | `logs/predictions.jsonl` (off in tests) |
+| `PREDICTION_LOG_RETENTION_DAYS` | Days that the prediction log is kept (see Phase 6 of the Methodology) | `90` |
 | `CREDIT_MODEL_PATH` | Saved credit classifier | `ml/artifacts/credit_model.pkl` |
 | `CREDIT_SCALER_PATH` | Saved feature scaler | `ml/artifacts/scaler.pkl` |
 
@@ -99,8 +114,9 @@ Production example: `FLASK_CONFIG=production SECRET_KEY=... gunicorn run:app`
 
 Example (PowerShell): `$env:AUTH_ENABLED = "true"; python run.py`. See also
 [docs/INTEGRATION.md](docs/INTEGRATION.md).
-With `False`, every visitor acts as the demo user, so do not store real data in that mode. Nobody can log in as the
-demo user (its password is random) and its data is never shown to real users.
+With `False`, every visitor acts as the demo user, so do not store real data in that mode. With `True` the demo
+account is a normal account whose password is `DEMO_PASSWORD`; it is public, so it holds only sample data, and the
+data of the demo user is never shown to real users.
 
 ### Database URL
 
@@ -129,7 +145,8 @@ Plain `postgres://`, `postgresql://` and `mysql://` URLs are mapped to the insta
 │   ├── main/                # Home page blueprint
 │   ├── transactions/        # Transactions blueprint
 │   ├── dashboard/           # Dashboard blueprint
-│   ├── credit/              # Credit evaluation blueprint: form validation and predictor
+│   ├── credit/              # Credit evaluation blueprint: form validation, predictor, model registry and prediction log
+│   ├── methodology/         # Public Methodology pages: overview and the six CRISP-ML phases
 │   └── auth/                # Authentication blueprint and services contract
 ├── templates/               # Jinja2 templates (base.html + one folder per blueprint)
 ├── static/

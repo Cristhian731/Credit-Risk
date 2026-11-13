@@ -76,17 +76,38 @@ def adopt_legacy_db_command(source, target):
 @with_appcontext
 def seed_demo_command():
     """Create the demo user and its sample transactions (safe to run again)."""
+    from flask import current_app
+
+    from .auth.services import MIN_PASSWORD_LENGTH
     from .seed import seed_demo
 
+    password = current_app.config.get("DEMO_PASSWORD")
+    if not password or len(password) < MIN_PASSWORD_LENGTH:
+        raise click.ClickException(
+            f"Set DEMO_PASSWORD (at least {MIN_PASSWORD_LENGTH} characters): it is the password of the demo account."
+        )
     try:
-        result = seed_demo()
+        result = seed_demo(password)
     except IntegrityError as error:
         raise click.ClickException(f"Could not create the demo user (is the username taken?): {error.orig}")
     click.echo("Demo user created." if result["user_created"] else "Demo user already exists.")
     click.echo(f"Sample transactions added: {result['transactions_added']}")
 
 
+@click.command("purge-prediction-log")
+@click.option("--days", type=int, default=None, help="Keep this many days (default: PREDICTION_LOG_RETENTION_DAYS).")
+@with_appcontext
+def purge_prediction_log_command(days):
+    """Delete the entries of the prediction log older than the retention period."""
+    from flask import current_app
+
+    days = current_app.config["PREDICTION_LOG_RETENTION_DAYS"] if days is None else days
+    deleted, kept = current_app.extensions["prediction_log"].purge(days)
+    click.echo(f"Deleted {deleted} predictions older than {days} days; {kept} kept.")
+
+
 def register_cli(app):
     """Attach the CLI commands to the application."""
     app.cli.add_command(adopt_legacy_db_command)
     app.cli.add_command(seed_demo_command)
+    app.cli.add_command(purge_prediction_log_command)
