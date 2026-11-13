@@ -1,0 +1,82 @@
+name: Tests copy
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite:
+    name: SQLite
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:////tmp/credit_risk_ci.db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Migrate an empty database (upgrade, downgrade, upgrade)
+        run: |
+          flask --app run db upgrade
+          flask --app run db current | grep -q "(head)"
+          flask --app run db downgrade base
+          flask --app run db upgrade
+          flask --app run db current | grep -q "(head)"
+
+      - name: Run tests
+        run: pytest -v
+
+  postgresql:
+    name: PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: credit_risk
+          POSTGRES_PASSWORD: credit_risk
+          POSTGRES_DB: credit_risk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U credit_risk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: credit_risk
+      # Migrations run on one database, the test suite on another (it creates and drops tables).
+      DATABASE_URL: postgresql://credit_risk:credit_risk@localhost:5432/credit_risk
+      TEST_DATABASE_URL: postgresql://credit_risk:credit_risk@localhost:5432/credit_risk_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create the test database
+        run: psql -h localhost -U credit_risk -d credit_risk -c "CREATE DATABASE credit_risk_test"
+
+      - name: Migrate an empty database (upgrade, downgrade, upgrade)
+        run: |
+          flask --app run db upgrade
+          flask --app run db current | grep -q "(head)"
+          flask --app run db downgrade base
+          flask --app run db upgrade
+          flask --app run db current | grep -q "(head)"
+
+      - name: Run tests
+        run: pytest -v
