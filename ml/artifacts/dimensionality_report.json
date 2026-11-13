@@ -1,0 +1,290 @@
+{
+  "artifacts_version": "2026-11-13.1",
+  "champion": "logistic_regression",
+  "dataset": {
+    "sha256": "1d7556a9071e7f9e872dc05a0cad174229fb1164b1cf3470ad35eed195c24278",
+    "train_rows": 204277
+  },
+  "protocol": {
+    "data": "Train split only (80% stratified, seed 42); the test split is deleted right after the split.",
+    "cv_folds": 5,
+    "random_state": 42,
+    "test_usage": "Not used. Flagged rates come from out-of-fold predictions on the train split."
+  },
+  "pca": {
+    "input_columns": [
+      "Age",
+      "Income",
+      "LoanAmount",
+      "CreditScore",
+      "MonthsEmployed",
+      "NumCreditLines",
+      "LoanTerm",
+      "DTIRatio",
+      "EmploymentType_Full-time",
+      "EmploymentType_Part-time",
+      "EmploymentType_Self-employed",
+      "EmploymentType_Unemployed"
+    ],
+    "explained_variance_ratio": [
+      0.1112,
+      0.1111,
+      0.111,
+      0.084,
+      0.0838,
+      0.0836,
+      0.0833,
+      0.0833,
+      0.0831,
+      0.0828,
+      0.0827,
+      0.0
+    ],
+    "cumulative_variance": [
+      0.1112,
+      0.2223,
+      0.3334,
+      0.4173,
+      0.5011,
+      0.5848,
+      0.6681,
+      0.7514,
+      0.8345,
+      0.9173,
+      1.0,
+      1.0
+    ],
+    "components_for_90_percent": 10,
+    "components_for_95_percent": 11
+  },
+  "tsne": {
+    "sample_rows": 5000,
+    "perplexity": 30,
+    "random_state": 42,
+    "kl_divergence": 1.9717
+  },
+  "experiments": {
+    "pca_components": {
+      "baseline": {
+        "n_features": 9,
+        "cv": {
+          "roc_auc": [
+            0.7111,
+            0.0036
+          ],
+          "recall": [
+            0.6635,
+            0.0052
+          ]
+        }
+      },
+      "variants": [
+        {
+          "n_components": 2,
+          "explained_variance": 0.2223,
+          "cv": {
+            "roc_auc": [
+              0.5319,
+              0.0128
+            ],
+            "recall": [
+              0.5714,
+              0.0915
+            ]
+          },
+          "delta_roc_auc": -0.1792,
+          "delta_recall": -0.0921
+        },
+        {
+          "n_components": 3,
+          "explained_variance": 0.3334,
+          "cv": {
+            "roc_auc": [
+              0.55,
+              0.0108
+            ],
+            "recall": [
+              0.5497,
+              0.0043
+            ]
+          },
+          "delta_roc_auc": -0.1611,
+          "delta_recall": -0.1138
+        },
+        {
+          "n_components": 4,
+          "explained_variance": 0.4173,
+          "cv": {
+            "roc_auc": [
+              0.5967,
+              0.0304
+            ],
+            "recall": [
+              0.593,
+              0.0101
+            ]
+          },
+          "delta_roc_auc": -0.1144,
+          "delta_recall": -0.0705
+        },
+        {
+          "n_components": 6,
+          "explained_variance": 0.5848,
+          "cv": {
+            "roc_auc": [
+              0.6249,
+              0.0127
+            ],
+            "recall": [
+              0.592,
+              0.0131
+            ]
+          },
+          "delta_roc_auc": -0.0862,
+          "delta_recall": -0.0715
+        },
+        {
+          "n_components": 8,
+          "explained_variance": 0.7514,
+          "cv": {
+            "roc_auc": [
+              0.6655,
+              0.0219
+            ],
+            "recall": [
+              0.6222,
+              0.0186
+            ]
+          },
+          "delta_roc_auc": -0.0456,
+          "delta_recall": -0.0413
+        },
+        {
+          "n_components": 10,
+          "explained_variance": 0.9173,
+          "cv": {
+            "roc_auc": [
+              0.7064,
+              0.006
+            ],
+            "recall": [
+              0.6602,
+              0.0061
+            ]
+          },
+          "delta_roc_auc": -0.0047,
+          "delta_recall": -0.0033
+        },
+        {
+          "n_components": 12,
+          "explained_variance": 1.0,
+          "cv": {
+            "roc_auc": [
+              0.7111,
+              0.0036
+            ],
+            "recall": [
+              0.6636,
+              0.005
+            ]
+          },
+          "delta_roc_auc": 0.0,
+          "delta_recall": 0.0001
+        }
+      ]
+    },
+    "without_age": {
+      "with_age": {
+        "cv": {
+          "roc_auc": [
+            0.7111,
+            0.0036
+          ],
+          "recall": [
+            0.6635,
+            0.0052
+          ]
+        },
+        "flagged_rate": 0.391
+      },
+      "without_age": {
+        "cv": {
+          "roc_auc": [
+            0.6515,
+            0.0036
+          ],
+          "recall": [
+            0.6117,
+            0.0068
+          ]
+        },
+        "flagged_rate": 0.4197
+      },
+      "by_age_range": {
+        "18-24": {
+          "rows": 27342,
+          "default_rate": 0.2103,
+          "flagged_rate_with_age": 0.8508,
+          "flagged_rate_without_age": 0.4172,
+          "recall_with_age": 0.9219,
+          "recall_without_age": 0.5814
+        },
+        "25-34": {
+          "rows": 39414,
+          "default_rate": 0.1645,
+          "flagged_rate_with_age": 0.6884,
+          "flagged_rate_without_age": 0.4192,
+          "recall_with_age": 0.833,
+          "recall_without_age": 0.608
+        },
+        "35-44": {
+          "rows": 39271,
+          "default_rate": 0.1196,
+          "flagged_rate_with_age": 0.4451,
+          "flagged_rate_without_age": 0.4204,
+          "recall_with_age": 0.6471,
+          "recall_without_age": 0.6224
+        },
+        "45-54": {
+          "rows": 39280,
+          "default_rate": 0.0881,
+          "flagged_rate_with_age": 0.2199,
+          "flagged_rate_without_age": 0.4221,
+          "recall_with_age": 0.4123,
+          "recall_without_age": 0.625
+        },
+        "55-69": {
+          "rows": 58970,
+          "default_rate": 0.0565,
+          "flagged_rate_with_age": 0.0569,
+          "flagged_rate_without_age": 0.419,
+          "recall_with_age": 0.1717,
+          "recall_without_age": 0.6424
+        }
+      },
+      "flag_rate_ratio_youngest_to_oldest": {
+        "with_age": 14.95,
+        "without_age": 1.0
+      }
+    }
+  },
+  "interpretation": [
+    "PCA: the features are almost uncorrelated (largest correlation between two features: 0.00), so PCA finds nothing to compress. The numeric part has no preferred direction: components 4 to 11 keep between 8.3% and 8.4% of the variance each. The first three components (11% each) only encode EmploymentType, because its standardized one-hot columns are correlated with each other. 10 of 12 components are needed for 90% of the variance (11 for 95%).",
+    "Experiment 1: with 2 components (22% of the variance) the CV ROC AUC is 0.5319 against 0.7111 with the original features (difference -0.1792). With 10 components (92% of the variance) it is 0.7064 (difference -0.0047). With all 12 components, which is only a rotation, the difference is +0.0000. The variance ordering says nothing about predictive power, and every component dropped removes signal.",
+    "PCA keeps the directions with the most variance, not the ones that best separate defaulters. A model trained on a rotation of the features cannot add information that was not already there, and each component removed throws information away. Reducing dimensions also makes the model harder to explain, because a component mixes several features. For these reasons PCA is not used in the production model.",
+    "t-SNE (KL divergence 1.97) draws four separated islands, one per EmploymentType (the standardized one-hot columns dominate the distances). Inside each island defaulters are mixed with repayers, and the PCA projection shows the same mixture. This agrees with a ROC AUC around 0.71: the signal is weak and spread over many features instead of concentrated in a few directions.",
+    "Experiment 2: without Age the CV ROC AUC goes from 0.7111 to 0.6515 (-0.0596) and the CV recall from 0.6635 to 0.6117 (-0.0518).",
+    "Age bias: applicants aged 18-24 are flagged 85% of the time with Age and 42% without it, while 55-69 go from 6% to 42%. The youngest-to-oldest ratio of flagged rates changes from 14.95 to 1.0. Without Age the model flags about the same share of every age range, although the real default rate goes from 21% to 6%. The gap closes at a price: the oldest range is flagged 7.4 times more often (more false alarms) and the recall of the youngest range falls from 92% to 58%. No other feature takes Age's place (correlation of Age with MonthsEmployed: -0.00; the features are almost independent), so Age carries real signal that is lost, not a bias that can be removed for free.",
+    "Decision: the model in production is not changed. The without-Age variant is documented as a mitigation option to review with the domain expert, together with per-group thresholds and human review of rejections."
+  ],
+  "figures": [
+    "methodology/eda_target.png",
+    "methodology/eda_default_rate_by_feature.png",
+    "methodology/eda_correlations.png",
+    "methodology/pca_scree.png",
+    "methodology/pca_projection.png",
+    "methodology/tsne_projection.png",
+    "methodology/pca_experiment.png",
+    "methodology/age_experiment.png"
+  ]
+}
