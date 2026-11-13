@@ -1,64 +1,151 @@
 {% extends "base.html" %}
 
-{% block title %}Model Comparison &middot; Credit Risk{% endblock %}
+{% block title %}Credit Models &middot; Credit Risk{% endblock %}
 
+{# One page, four tabs: Logistic Regression, Random Forest, XGBoost and Comparison.
+   The tab ids are the model names (and "comparison"), so /credit/models/#xgboost opens the XGBoost tab.
+   Each model has its own partial in templates/credit/models/; its owner writes the "About this algorithm" text. #}
 {% block content %}
 {% set manifest = catalog.manifest %}
+{% set tabs = [
+  ('logistic_regression', 'Logistic Regression'),
+  ('random_forest', 'Random Forest'),
+  ('xgboost', 'XGBoost'),
+  ('comparison', 'Comparison'),
+] %}
+
 <div class="container py-4">
   {% include "credit/_example_banner.html" %}
 
-  <div class="card p-4">
-    <h2 class="fw-bold mb-1">Model Comparison</h2>
-    <p class="text-muted mb-3">
-      Feature set <code>{{ manifest.feature_set }}</code> &middot; version {{ manifest.version }}
-      &middot; trained {{ manifest.trained_at }}
-    </p>
+  <ul class="nav nav-tabs mb-3" id="model-tabs" role="tablist">
+    {% for tab, label in tabs %}
+      <li class="nav-item" role="presentation">
+        <button class="nav-link {% if tab == active %}active{% endif %}" id="tab-{{ tab }}" type="button" role="tab"
+                data-bs-toggle="tab" data-bs-target="#{{ tab }}" aria-controls="{{ tab }}"
+                aria-selected="{{ 'true' if tab == active else 'false' }}">{{ label }}</button>
+      </li>
+    {% endfor %}
+  </ul>
 
-    {# Sprint 2 - owner: web: summary cards (dataset rows, champion, selection rule). #}
-    <p class="mb-3"><strong>Selection rule:</strong> {{ manifest.selection_rule }}</p>
+  <div class="tab-content">
+    {% for tab, label in tabs[:3] %}
+      <div class="tab-pane fade {% if tab == active %}show active{% endif %}" id="{{ tab }}" role="tabpanel"
+           aria-labelledby="tab-{{ tab }}">
+        {% include "credit/models/_" ~ tab ~ ".html" %}
+      </div>
+    {% endfor %}
 
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead>
-          <tr>
-            <th>Model</th>
-            <th class="text-end">CV ROC AUC</th>
-            <th class="text-end">CV recall</th>
-            <th class="text-end">Test ROC AUC</th>
-            <th class="text-end">Test recall</th>
-            <th class="text-end">Test precision</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for name, m in catalog.metrics.items() %}
-            <tr>
-              <td>
-                <a href="{{ url_for('credit.model_detail', name=name) }}">{{ m.display_name }}</a>
-                {% if name == manifest.champion %}<span class="badge text-bg-success ms-1">Official model</span>{% endif %}
-              </td>
-              <td class="text-end">{{ '%.3f'|format(m.cv.roc_auc[0]) }} &plusmn; {{ '%.3f'|format(m.cv.roc_auc[1]) }}</td>
-              <td class="text-end">{{ '%.3f'|format(m.cv.recall[0]) }} &plusmn; {{ '%.3f'|format(m.cv.recall[1]) }}</td>
-              <td class="text-end">{{ '%.3f'|format(m.test.roc_auc) }}</td>
-              <td class="text-end">{{ '%.3f'|format(m.test.recall) }}</td>
-              <td class="text-end">{{ '%.3f'|format(m.test.precision) }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="tab-pane fade {% if active == 'comparison' %}show active{% endif %}" id="comparison" role="tabpanel"
+         aria-labelledby="tab-comparison">
+      <div class="card p-4">
+        <h2 class="fw-bold mb-1">Model Comparison</h2>
+        <p class="text-muted mb-3">
+          Feature set <code>{{ manifest.feature_set }}</code> &middot; version {{ manifest.version }}
+          &middot; trained {{ manifest.trained_at }}
+        </p>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th class="text-end">CV ROC AUC</th>
+                <th class="text-end">CV recall</th>
+                <th class="text-end">Test ROC AUC</th>
+                <th class="text-end">Test recall</th>
+                <th class="text-end">Test precision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for name, m in catalog.metrics.items() %}
+                <tr class="{{ 'table-success' if name == manifest.champion }}">
+                  <td>
+                    <a href="#{{ name }}" data-tab-link="{{ name }}">{{ m.display_name }}</a>
+                    {% if name == manifest.champion %}<span class="badge text-bg-success ms-1">Official model</span>{% endif %}
+                  </td>
+                  <td class="text-end">{{ '%.3f'|format(m.cv.roc_auc[0]) }} &plusmn; {{ '%.3f'|format(m.cv.roc_auc[1]) }}</td>
+                  <td class="text-end">{{ '%.3f'|format(m.cv.recall[0]) }} &plusmn; {{ '%.3f'|format(m.cv.recall[1]) }}</td>
+                  <td class="text-end">{{ '%.3f'|format(m.test.roc_auc) }}</td>
+                  <td class="text-end">{{ '%.3f'|format(m.test.recall) }}</td>
+                  <td class="text-end">{{ '%.3f'|format(m.test.precision) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card p-4 mt-3" data-testid="selection-rule">
+        <h3 class="h5 fw-bold">How the official model was chosen</h3>
+        <p class="mb-2">
+          The official model is chosen with <strong>cross-validation on the train split only</strong>;
+          the test split is reported but never used to select a model.
+        </p>
+        <p class="mb-3"><strong>Rule:</strong> {{ manifest.selection_rule }}</p>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-3">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th class="text-end">Mean CV ROC AUC</th>
+                <th class="text-end">Gap to the best</th>
+                <th class="text-center">Tied with the best</th>
+                <th class="text-end">Mean CV recall</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in selection %}
+                <tr class="{{ 'table-success' if row.is_champion }}">
+                  <td>{{ row.display_name }}</td>
+                  <td class="text-end">{{ '%.4f'|format(row.cv_roc_auc) }}</td>
+                  <td class="text-end">{{ '%.4f'|format(row.gap) }}</td>
+                  <td class="text-center">{{ 'Yes' if row.tied else 'No' }}</td>
+                  <td class="text-end">{{ '%.4f'|format(row.cv_recall) }}</td>
+                  <td>{% if row.is_champion %}<span class="badge text-bg-success">Official model</span>{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% set best = selection|sort(attribute='cv_roc_auc', reverse=true)|first %}
+        {% set champion = selection|selectattr('is_champion')|first %}
+        {% if champion.name == best.name %}
+          <p class="mb-0">
+            {{ champion.display_name }} has the highest mean CV ROC AUC, so it is the official model without any tie.
+          </p>
+        {% else %}
+          <p class="mb-0">
+            {% set others = selection|selectattr('tied')|rejectattr('name', 'equalto', best.name)|list %}
+            {{ best.display_name }} has the highest mean CV ROC AUC ({{ '%.4f'|format(best.cv_roc_auc) }}), but
+            {{ others|map(attribute='display_name')|join(' and ') }}
+            {{ 'is' if others|length == 1 else 'are' }} closer than {{ margin }} to it, so they are tied.
+            Among the tied models the highest mean CV recall of the default class wins:
+            {{ champion.display_name }} ({{ '%.4f'|format(champion.cv_recall) }}) is the official model.
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="card p-4 mt-3">
+        <h3 class="h5 fw-bold">ROC curves (test)</h3>
+        <div class="chart-box"><canvas id="roc-comparison" aria-label="ROC curves of the three models" role="img"></canvas></div>
+      </div>
+
+      <div class="card p-4 mt-3">
+        <h3 class="h5 fw-bold">Cross-validation metrics</h3>
+        <p class="text-muted small">Mean of the 5 folds on the train split. The tooltip also shows the standard deviation.</p>
+        <div class="chart-box"><canvas id="cv-metrics-chart" aria-label="Cross-validation metrics of the three models" role="img"></canvas></div>
+      </div>
     </div>
   </div>
-
-  {# Sprint 2 - owner: web: ROC curves of the three models in one Chart.js chart
-     (data: catalog.metrics[name].roc_curve.fpr / tpr). #}
-  <div class="card p-4 mt-3" data-todo="roc-comparison-chart">
-    <h3 class="h5 fw-bold">ROC curves</h3>
-    <p class="text-muted mb-0">Chart pending.</p>
-  </div>
-
-  {# Sprint 2 - owner: web: grouped bar chart of the CV metrics (mean with std as error bars). #}
-  <div class="card p-4 mt-3" data-todo="cv-metrics-chart">
-    <h3 class="h5 fw-bold">Cross-validation metrics</h3>
-    <p class="text-muted mb-0">Chart pending.</p>
-  </div>
 </div>
+
+{# Data for the charts: the same JSON that the tables above show. #}
+<script type="application/json" id="models-data">{{ {
+  "metrics": catalog.metrics,
+  "champion": manifest.champion,
+  "active": active,
+}|tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/model_charts.js') }}"></script>
 {% endblock %}

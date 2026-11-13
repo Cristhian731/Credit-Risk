@@ -2,9 +2,9 @@
 import pytest
 
 from app.credit.forms import validate_form
-from app.credit.services import PredictionService
+from app.credit.services import ModelRegistry, PredictionService
 from app.services import repository
-from ml.features import FEATURE_ORDER
+from ml.features import EXAMPLE_ARTIFACTS_DIR, FEATURE_ORDER
 
 # These tests run in demo mode (AUTH_ENABLED False), which needs the demo user.
 pytestmark = pytest.mark.usefixtures("demo_user")
@@ -146,10 +146,11 @@ def test_old_result_address_without_id_redirects_to_the_history(credit_client):
     assert response.headers["Location"] == "/credit/history"
 
 
-def test_unavailable_model_returns_503(app, credit_client):
-    app.extensions["credit_predictor"] = PredictionService(
-        "missing.pkl", "missing.pkl", approved_max=0.33, medium_max=0.66
-    )
+def test_unavailable_model_returns_503(app, credit_client, tmp_path):
+    missing = PredictionService("missing.pkl", "missing.pkl", approved_max=0.33, medium_max=0.66)
+    app.extensions["credit_predictor"] = missing
+    # No trained models either, so the registry falls back to the unavailable placeholder.
+    app.extensions["model_registry"] = ModelRegistry(str(tmp_path), EXAMPLE_ARTIFACTS_DIR, missing)
     response = credit_client.post("/credit/", data=VALID_FORM)
     assert response.status_code == 503
     assert "not available" in response.get_data(as_text=True)

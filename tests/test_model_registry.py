@@ -8,10 +8,8 @@ import pytest
 from app.credit.forms import validate_form
 from app.credit.services import ModelRegistry
 from ml.features import EXAMPLE_ARTIFACTS_DIR, MANIFEST_FILENAME
-from ml.schemas import MODEL_NAMES
+from ml.schemas import CHAMPION_AUC_MARGIN, MODEL_CODES, MODEL_NAMES, model_version_tag
 
-SPRINT_1_ML = pytest.mark.skip(reason="Sprint 1 - owner: ml")
-SPRINT_2_ML = pytest.mark.skip(reason="Sprint 2 - owner: ml")
 
 FORM = {
     "age": "35",
@@ -87,35 +85,45 @@ def test_creating_the_registry_loads_no_model(app, tmp_path, monkeypatch):
     assert registry.loaded_model is None
 
 
-def test_choosing_a_model_is_not_available_yet(registry, values):
-    with pytest.raises(NotImplementedError):
+def test_choosing_a_model_without_trained_models_raises_runtime_error(registry, values):
+    with pytest.raises(RuntimeError):
         registry.predict(values, model="xgboost")
 
 
-# Skeleton tests for the ml owner
+# Behaviour with trained models
 
-@pytest.fixture
-def sample_registry(app, tmp_path):
-    """Registry over models really trained on the synthetic sample (needs ml.train.run)."""
+@pytest.fixture(scope="module")
+def sample_artifacts(tmp_path_factory):
+    """Models really trained on the synthetic sample (small search, one process), shared by the tests."""
     import os
+    import warnings
 
     from ml import train
 
     sample = os.path.join(os.path.dirname(__file__), "fixtures", "loan_default_sample.csv")
-    train.run(sample, str(tmp_path))
+    folder = tmp_path_factory.mktemp("sample_artifacts")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        train.run(sample, str(folder), n_iter=2, n_jobs=1)
+    return folder
+
+
+@pytest.fixture
+def sample_registry(app, sample_artifacts, tmp_path):
+    shutil.copytree(sample_artifacts, tmp_path, dirs_exist_ok=True)
     return ModelRegistry(str(tmp_path), EXAMPLE_ARTIFACTS_DIR, app.extensions["credit_predictor"])
 
 
-@SPRINT_1_ML
 def test_with_trained_models_predict_uses_the_champion(sample_registry, values):
     """predict(values) loads the manifest champion and returns label, risk_percent 0-100 and recommendation."""
     result = sample_registry.predict(values)
-    assert set(result) == {"label", "risk_percent", "recommendation"}
+    assert set(result) == {"label", "risk_percent", "recommendation", "model", "model_version"}
     assert 0 <= result["risk_percent"] <= 100
-    assert sample_registry.loaded_model == sample_registry.catalog()["manifest"]["champion"]
+    champion = sample_registry.catalog()["manifest"]["champion"]
+    assert sample_registry.loaded_model == champion == result["model"]
+    assert result["model_version"] == model_version_tag(champion, sample_registry.catalog()["manifest"]["version"])
 
 
-@SPRINT_1_ML
 def test_the_champion_is_loaded_once_and_only_on_first_prediction(sample_registry, values, monkeypatch):
     """joblib.load is called once across two predictions, and not before the first one."""
     calls = []
@@ -127,14 +135,12 @@ def test_the_champion_is_loaded_once_and_only_on_first_prediction(sample_registr
     assert len(calls) == 1
 
 
-@SPRINT_1_ML
 def test_a_missing_model_file_raises_runtime_error(trained_registry, values):
     """With a manifest but no model.joblib, predict raises RuntimeError (the route answers 503)."""
     with pytest.raises(RuntimeError):
         trained_registry.predict(values)
 
 
-@SPRINT_2_ML
 def test_at_most_one_model_is_kept_in_memory(sample_registry, values):
     """Predicting with random_forest after xgboost releases xgboost: only one model stays loaded."""
     sample_registry.predict(values, model="xgboost")
@@ -142,8 +148,33 @@ def test_at_most_one_model_is_kept_in_memory(sample_registry, values):
     assert sample_registry.loaded_model == "random_forest"
 
 
-@SPRINT_2_ML
 def test_unknown_model_name_is_rejected(trained_registry, values):
     """predict(values, model='svm') raises ValueError."""
     with pytest.raises(ValueError):
         trained_registry.predict(values, model="svm")
+
+
+def test_a_chosen_model_is_used_even_when_it_is_not_the_champion(sample_registry, values):
+    other = next(name for name in MODEL_NAMES if name != sample_registry.catalog()["manifest"]["champion"])
+    result = sample_registry.predict(values, model=other)
+    assert result["model"] == other
+    assert result["model_version"].startswith(MODEL_CODES[other] + "@")
+
+
+def test_the_catalog_includes_experiments_and_overfitting(sample_registry):
+    catalog = sample_registry.catalog()
+    assert set(catalog["experiments"]["models"]) == set(MODEL_NAMES)
+    assert set(catalog["overfitting"]["models"]) == set(MODEL_NAMES)
+
+
+def test_the_example_catalog_has_no_experiments_or_overfitting(registry):
+    catalog = registry.catalog()
+    assert catalog["experiments"] is None and catalog["overfitting"] is None
+
+
+def test_selection_summary_marks_the_champion_and_the_tie(sample_registry):
+    summary = sample_registry.selection_summary()
+    assert [row["name"] for row in summary] == list(MODEL_NAMES)
+    assert sum(row["is_champion"] for row in summary) == 1
+    best = max(row["cv_roc_auc"] for row in summary)
+    assert all(row["tied"] == (best - row["cv_roc_auc"] < CHAMPION_AUC_MARGIN) for row in summary)

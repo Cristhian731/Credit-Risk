@@ -10,9 +10,9 @@ from ..services.repository import (
 )
 from . import bp
 from .forms import CHOICE_FIELDS, FIELD_ORDER, NUMERIC_FIELDS, to_record, validate_client, validate_form
-from ml.schemas import MODEL_NAMES
+from ml.schemas import CHAMPION_AUC_MARGIN, DISPLAY_NAMES, MODEL_NAMES, parse_model_version_tag
 
-from .services import RECOMMENDATIONS, get_predictor, get_registry
+from .services import RECOMMENDATIONS, get_registry
 
 
 def _render_form(form, status=200):
@@ -42,7 +42,7 @@ def index():
         return _render_form(request.form, 400)
 
     try:
-        result = get_predictor().predict(values)
+        result = get_registry().predict(values)
     except RuntimeError as exc:
         flash(str(exc), "danger")
         return _render_form(request.form, 503)
@@ -52,6 +52,8 @@ def index():
         **client,
         "risk_label": result["label"],
         "risk_percent": result["risk_percent"],
+        # "<code>@<version>", for example lr@2026-11-13.1; None for the placeholder model.
+        "model_version": result.get("model_version"),
         "user_id": get_current_user().id,
     })
     # Post/Redirect/Get: reloading the result page never submits the form again.
@@ -128,25 +130,65 @@ def result(application_id):
     return render_template("credit/result.html", result=result, application=application)
 
 
+@bp.app_template_filter("model_label")
+def model_label(model_version):
+    """Full model name and artifact version of a stored model_version, never the short code."""
+    name, version = parse_model_version_tag(model_version)
+    if name is None:
+        return "Placeholder model (synthetic data)"
+    return f"{DISPLAY_NAMES[name]} (version {version})"
+
+
+def _render_models(active="comparison", form=None, result=None, status=200):
+    """The tabbed model page: one tab per model plus the comparison."""
+    registry = get_registry()
+    catalog = registry.catalog()
+    return render_template(
+        "credit/models.html",
+        catalog=catalog,
+        selection=registry.selection_summary(catalog),
+        margin=CHAMPION_AUC_MARGIN,
+        active=active,
+        form=form or {},
+        result=result,
+        field_order=FIELD_ORDER,
+        numeric_fields=NUMERIC_FIELDS,
+        choice_fields=CHOICE_FIELDS,
+    ), status
+
+
 @bp.route("/models/")
 @login_required
 def models():
-    """Compare the three candidate models (example data until real artifacts exist)."""
-    return render_template("credit/models.html", catalog=get_registry().catalog())
+    """Tabs: Logistic Regression, Random Forest, XGBoost and Comparison (example data until real artifacts exist)."""
+    return _render_models()
 
 
 @bp.route("/models/<name>/")
 @login_required
 def model_detail(name):
-    """Metrics of one model. Names outside ml.schemas.MODEL_NAMES answer 404."""
+    """Old address of one model: it now lives in a tab of /credit/models/. Unknown names answer 404."""
     if name not in MODEL_NAMES:
         abort(404)
-    catalog = get_registry().catalog()
-    if name not in catalog["metrics"]:
+    if name not in get_registry().catalog()["metrics"]:
         abort(404)
-    return render_template(
-        "credit/model_detail.html",
-        catalog=catalog,
-        metrics=catalog["metrics"][name],
-        is_champion=catalog["manifest"]["champion"] == name,
-    )
+    return redirect(url_for("credit.models") + f"#{name}")
+
+
+@bp.route("/models/<name>/predict", methods=["POST"])
+@login_required
+def model_predict(name):
+    """Predict one application with the chosen model. Nothing is saved: it is a comparison tool."""
+    if name not in MODEL_NAMES:
+        abort(404)
+    values, errors = validate_form(request.form)
+    if errors:
+        for message in errors:
+            flash(message, "danger")
+        return _render_models(name, request.form, status=400)
+    try:
+        result = get_registry().predict(values, model=name)
+    except RuntimeError as exc:
+        flash(str(exc), "danger")
+        return _render_models(name, request.form, status=503)
+    return _render_models(name, request.form, {**result, "model": name})
