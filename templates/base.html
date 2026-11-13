@@ -45,6 +45,17 @@
               </li>
             {% endfor %}
           {% endif %}
+          {# Methodology: public pages, visible with and without a session. #}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle {% if request.blueprint == 'methodology' %}active{% endif %}" href="#" id="methodology-menu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Methodology</a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="methodology-menu">
+              <li><a class="dropdown-item" href="{{ url_for('methodology.overview') }}">Overview</a></li>
+              <li><hr class="dropdown-divider"></li>
+              {% for number, phase_title in methodology_phases %}
+                <li><a class="dropdown-item" href="{{ url_for('methodology.phase', number=number) }}">Phase {{ number }} &middot; {{ phase_title }}</a></li>
+              {% endfor %}
+            </ul>
+          </li>
           {# Demo mode (AUTH_ENABLED False) also keeps the app links visible. #}
           {% if current_user %}
             {% for endpoint, label in app_links %}

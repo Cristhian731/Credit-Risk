@@ -11,6 +11,7 @@ import joblib
 import numpy as np
 from flask import current_app
 
+from .prediction_log import PredictionLog
 from ml.features import FEATURE_ORDER, MANIFEST_FILENAME, METRICS_FILENAME, MODEL_FILENAME, to_model_frame
 from ml.schemas import CHAMPION_AUC_MARGIN, MODEL_NAMES, load_json, model_version_tag
 
@@ -93,16 +94,19 @@ class ModelRegistry:
     The model pages only read JSON, so they never load a model file.
     """
 
-    def __init__(self, artifacts_dir, example_dir, fallback):
+    def __init__(self, artifacts_dir, example_dir, fallback, prediction_log=None):
         """
         Args:
             artifacts_dir: Folder of the real artifacts (``ml.features.ARTIFACTS_DIR``).
             example_dir: Folder of the example artifacts (``ml.features.EXAMPLE_ARTIFACTS_DIR``).
             fallback: The placeholder ``PredictionService`` used while there is no manifest.
+            prediction_log: ``PredictionLog`` that records every prediction of a trained model
+                (default: none).
         """
         self.artifacts_dir = artifacts_dir
         self.example_dir = example_dir
         self.fallback = fallback
+        self.prediction_log = prediction_log or PredictionLog("")
         # (model name, fitted pipeline, artifact version) of the only model kept in memory, or None.
         self._loaded = None
         self._lock = threading.Lock()
@@ -120,6 +124,10 @@ class ModelRegistry:
     def _read(self, directory, filename):
         path = os.path.join(directory, filename)
         return load_json(path) if os.path.exists(path) else None
+
+    def artifact(self, filename):
+        """Content of a JSON file of the real artifacts folder (never the example one), or None if it does not exist."""
+        return self._read(self.artifacts_dir, filename)
 
     def catalog(self):
         """Return the manifest and every model's metrics, for the model pages.
@@ -213,14 +221,18 @@ class ModelRegistry:
 
         name = model or load_json(os.path.join(self.artifacts_dir, MANIFEST_FILENAME))["champion"]
         pipeline, version = self._model(name)
-        risk = float(pipeline.predict_proba(to_model_frame(data))[0][1])
+        frame = to_model_frame(data)
+        risk = float(pipeline.predict_proba(frame)[0][1])
         label = self.fallback.classify(risk)
+        tag = model_version_tag(name, version)
+        # Monitoring: the model inputs, never the customer name or document.
+        self.prediction_log.record(name, tag, frame.iloc[0].to_dict(), risk, label)
         return {
             "label": label,
             "risk_percent": round(risk * 100, 1),
             "recommendation": RECOMMENDATIONS[label],
             "model": name,
-            "model_version": model_version_tag(name, version),
+            "model_version": tag,
         }
 
 

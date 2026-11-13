@@ -160,7 +160,8 @@ function initModelTabs() {
   });
 
   var start = location.hash.length > 1 ? location.hash.slice(1) : data.active;
-  if (document.getElementById(start) && start !== data.active) {
+  var hasTab = document.querySelector('#model-tabs [data-bs-target="#' + start + '"]');
+  if (hasTab && start !== data.active) {
     showTab(start);
   } else {
     build(data.active);

@@ -1,0 +1,109 @@
+{% extends "methodology/_base.html" %}
+{% from "methodology/_macros.html" import pending %}
+
+{% block page %}
+{% set mapping = {
+  'age': 'Age (clipped to the range of the dataset)',
+  'monthly_income': 'Income = monthly income x 12',
+  'employment_status': 'EmploymentType (employed: Full-time, self-employed: Self-employed, unemployed: Unemployed, retired: Part-time)',
+  'years_employment': 'MonthsEmployed = years x 12',
+  'credit_score': 'CreditScore (clipped)',
+  'existing_debt': 'Not a model input (stored with the evaluation)',
+  'dti_ratio': 'DTIRatio = percent / 100',
+  'loan_amount': 'LoanAmount',
+  'loan_term': 'LoanTerm (clipped)',
+  'previous_loans': 'NumCreditLines (clipped)',
+  'payment_history': 'Not a model input (stored with the evaluation)',
+} %}
+<h1 class="fw-bold">Phase 5 &middot; {{ title }}</h1>
+<p class="text-muted">How the models are served, what goes in and out, and how to run and use the application.</p>
+
+<section class="card p-4 mb-3" data-testid="pipeline">
+  <h2 class="h4 fw-bold">Saved pipeline and demo</h2>
+  <p>Each model is saved as one fitted scikit-learn pipeline (preprocessing and classifier together) in <code>ml/artifacts/&lt;model&gt;/model.joblib</code>:
+    {% for name in model_names %}<code>{{ name }}</code>{{ ', ' if not loop.last }}{% endfor %}.
+    A model registry loads them on demand (nothing at start-up) and keeps at most one in memory. The Flask application is the functional demo: it is described below and its address is <a href="{{ app_url }}">{{ app_url }}</a>.</p>
+  <p class="mb-0">Version of the artifacts: <code>{{ a.manifest.version }}</code> (official model: {{ d.champion_display }}).</p>
+</section>
+
+<section class="card p-4 mb-3" data-testid="inputs-outputs">
+  <h2 class="h4 fw-bold">Inputs and outputs</h2>
+  <h3 class="h6 fw-bold">Inputs (the credit evaluation form)</h3>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Field</th><th>Accepted values</th><th>Sent to the model as</th></tr></thead>
+      <tbody>
+        {% for name in field_order %}
+          <tr>
+            <td>{{ (numeric_fields[name][0] if name in numeric_fields else choice_fields[name][0]) }}</td>
+            <td>{% if name in numeric_fields %}{{ numeric_fields[name][2] }} to {{ '{:,}'.format(numeric_fields[name][3]) }}{% else %}{% for value, text in choice_fields[name][1] %}{{ text }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}</td>
+            <td>{{ mapping[name] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Amounts are in US dollars. The customer name and document are saved with the evaluation but are never model inputs.</p>
+  <h3 class="h6 fw-bold">Outputs</h3>
+  <ul class="mb-0">
+    <li>The <strong>probability of default</strong> as a risk percentage (0 to 100).</li>
+    <li>A <strong>label</strong>: Approved below {{ '%.0f'|format(100 * thresholds.approved) }}%, Medium Risk below {{ '%.0f'|format(100 * thresholds.medium) }}% and High Risk above, with a recommendation text.</li>
+    <li>The <strong>model and version</strong> that produced it, saved with the evaluation (and shown by its full name).</li>
+  </ul>
+</section>
+
+<section class="card p-4 mb-3" data-testid="dependencies">
+  <h2 class="h4 fw-bold">Dependencies</h2>
+  <p>Pinned in <code>requirements.txt</code>; the saved models are only guaranteed to load with these versions.</p>
+  {% if packages %}
+    <table class="table table-sm w-auto">
+      <tbody>{% for name, version in packages %}<tr><td>{{ name }}</td><td><code>{{ version }}</code></td></tr>{% endfor %}</tbody>
+    </table>
+  {% else %}
+    {{ pending("requirements.txt could not be read.") }}
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3" data-testid="run-instructions">
+  <h2 class="h4 fw-bold">How to run it</h2>
+  <pre class="bg-light border rounded p-3 small">git clone {{ repository_url }}.git
+cd Credit-Risk
+python -m venv venv &amp;&amp; venv\Scripts\activate     # source venv/bin/activate on macOS and Linux
+pip install -r requirements.txt
+flask --app run db upgrade                     # create the database tables
+DEMO_PASSWORD=... flask --app run seed-demo    # demo account and sample data
+python run.py                                  # http://127.0.0.1:5000
+python -m pytest -q                            # the tests</pre>
+  <p class="mb-1"><strong>To reproduce the training</strong> (the dataset is not in the repository; see <code>ml/data/README.md</code>): <code>python -m ml.train</code> writes the artifacts of this site. The dimensionality analysis runs in the <a href="{{ colab_url }}" rel="noopener">Colab notebook</a>, and the monitoring with <code>python -m ml.monitor</code> (Phase 6).</p>
+</section>
+
+<section class="card p-4 mb-3" data-testid="user-instructions">
+  <h2 class="h4 fw-bold">User instructions</h2>
+  <ol class="mb-0">
+    <li>Log in{% if demo.password %} with the demo account shown in the <a href="{{ url_for('methodology.overview') }}">overview</a>{% endif %}.</li>
+    <li><strong>Credit Evaluation &rarr; New evaluation</strong>: complete the customer and the nine fields and press <em>Evaluate Application</em>. The result shows the label, the risk and the model used, and it is saved in the evaluation history.</li>
+    <li><strong>Credit Evaluation &rarr; a model name</strong> opens its tab: metrics, charts, search runs and a form to try that model (that result is not saved). The <em>Comparison</em> tab explains how the official model was chosen.</li>
+    <li>The estimate supports a decision; it must be reviewed by a person, especially for young applicants (Phase 4).</li>
+  </ol>
+</section>
+
+<section class="card p-4 mb-3" data-testid="activity2">
+  <h2 class="h4 fw-bold">Integration with the finance module (Activity 2)</h2>
+  <p>The application also manages personal finances: transactions by category and a dashboard. The button <strong>Check my credit risk</strong> of the dashboard connects it with the model by opening the credit form with two values calculated from the transactions of the user (nothing is stored):</p>
+  <ul>
+    <li><strong>Monthly income</strong>: average of the monthly income totals of the 3 most recent complete months that have income, looking back up to 12 months and never using the current month.</li>
+    <li><strong>Debt-to-income ratio</strong>: the expenses of the categories marked as debt (loans, credit cards...; the names that suggest debt come premarked) averaged over the same months, divided by the monthly income.</li>
+  </ul>
+  <p class="mb-0">Each value shows its origin and can be edited. Only the identifiers of the debt categories travel in the address; the values are calculated on the server from the transactions of the logged user. The user completes the rest and the official model gives the result.</p>
+</section>
+
+<section class="card p-4 mb-3" data-testid="procedures">
+  <h2 class="h4 fw-bold">Monitoring, incidents and feedback</h2>
+  <ul>
+    <li><strong>Monitoring.</strong> Every prediction of a trained model is logged without the customer identity and the batch is compared with the train distribution (PSI). See <a href="{{ url_for('methodology.phase', number=6) }}">Phase 6</a>.</li>
+    <li><strong>Incidents.</strong> (1) Detect: a PSI alert, an error or a report from a user. (2) Contain: if a model is not available the evaluation answers with a clear message and no result is saved; if its outputs are unreliable the official model is switched to another one by retraining or by restoring the previous artifacts. (3) Investigate with the prediction log and the data report. (4) Fix on a branch with tests and publish through a reviewed pull request. (5) Record what happened and the decision in the repository.</li>
+    <li><strong>Feedback.</strong> Users and reviewers report problems or suggestions as issues in the <a href="{{ repository_url }}/issues" rel="noopener">repository</a>, with the date, the page and what they expected. The team reviews them at the scheduled checks (Phase 6); the feedback of a domain expert is documented in <a href="{{ url_for('methodology.phase', number=4) }}#expert-review">Phase 4</a>.</li>
+  </ul>
+  <p class="mb-0 small">The published address of the application is the one in the address bar of this page: <code>{{ app_url }}</code>.</p>
+</section>
+{% endblock %}

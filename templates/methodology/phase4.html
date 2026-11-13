@@ -1,0 +1,177 @@
+{% extends "methodology/_base.html" %}
+{% from "methodology/_macros.html" import pair, pct, figure, pending %}
+
+{% block page %}
+{% set sg = a.subgroups %}
+{% set dm = a.dimensionality %}
+{% set cm = a.metrics[d.champion].confusion_matrix %}
+<h1 class="fw-bold">Phase 4 &middot; {{ title }}</h1>
+<p class="text-muted">How good the models are, whether they overfit, whom they treat differently and what an expert thinks.</p>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">Metrics and why they were chosen</h2>
+  <ul class="mb-0">
+    <li><strong>ROC AUC</strong> is the main metric: it measures how well the model ranks defaulters above repayers for every possible threshold, and it does not depend on the class balance.</li>
+    <li><strong>Recall of the default class</strong> breaks ties and is a success criterion: it is the share of defaulters that the model finds, and missing a defaulter is the costly error.</li>
+    <li><strong>Precision and F1</strong> are reported to show the price of that recall: with few defaulters, many flagged applications are false alarms.</li>
+    <li><strong>Accuracy</strong> is reported but not used to decide: a model that predicts that nobody defaults would have a high accuracy on imbalanced data.</li>
+    <li>Validation uses stratified 5-fold cross-validation on the train split; the test split gives the final independent performance.</li>
+  </ul>
+</section>
+
+<section class="card p-4 mb-3" data-testid="comparison">
+  <h2 class="h4 fw-bold">Comparison of the models</h2>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr><th>Model</th><th class="text-end">CV ROC AUC</th><th class="text-end">CV recall</th><th class="text-end">Test ROC AUC</th><th class="text-end">Test recall</th><th class="text-end">Test precision</th><th class="text-end">Test F1</th><th class="text-end">Test accuracy</th></tr>
+      </thead>
+      <tbody>
+        {% for name, m in a.metrics.items() %}
+          <tr class="{{ 'table-success' if name == d.champion }}">
+            <td><a href="{{ url_for('credit.models') }}#{{ name }}">{{ m.display_name }}</a>{% if name == d.champion %} <span class="badge text-bg-success">Official model</span>{% endif %}</td>
+            <td class="text-end">{{ pair(m.cv.roc_auc) }}</td><td class="text-end">{{ pair(m.cv.recall) }}</td>
+            <td class="text-end">{{ '%.3f'|format(m.test.roc_auc) }}</td><td class="text-end">{{ '%.3f'|format(m.test.recall) }}</td>
+            <td class="text-end">{{ '%.3f'|format(m.test.precision) }}</td><td class="text-end">{{ '%.3f'|format(m.test.f1) }}</td><td class="text-end">{{ '%.3f'|format(m.test.accuracy) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="row g-3">
+    <div class="col-lg-6"><h3 class="h6 fw-bold">ROC curves (test)</h3><div class="chart-box"><canvas id="roc-comparison" aria-label="ROC curves of the three models" role="img"></canvas></div></div>
+    <div class="col-lg-6"><h3 class="h6 fw-bold">Cross-validation metrics</h3><div class="chart-box"><canvas id="cv-metrics-chart" aria-label="Cross-validation metrics of the three models" role="img"></canvas></div></div>
+  </div>
+</section>
+
+<section class="card p-4 mb-3" data-testid="overfitting">
+  <h2 class="h4 fw-bold">Overfitting and underfitting</h2>
+  {% if a.overfitting %}
+    <p>ROC AUC on the train split, in cross-validation and on the test split. A model is flagged as overfitted when the train score is more than {{ a.overfitting.threshold }} above the cross-validated one.</p>
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Model</th><th class="text-end">Train</th><th class="text-end">CV</th><th class="text-end">Test</th><th class="text-end">Train &minus; CV</th><th>Overfitting</th></tr></thead>
+      <tbody>
+        {% for name, v in a.overfitting.models.items() %}
+          <tr><td>{{ d.display_names[name] }}</td><td class="text-end">{{ '%.4f'|format(v.train_roc_auc) }}</td><td class="text-end">{{ '%.4f'|format(v.cv_roc_auc) }}</td><td class="text-end">{{ '%.4f'|format(v.test_roc_auc) }}</td><td class="text-end">{{ '%+.4f'|format(v.train_minus_cv) }}</td><td>{{ 'Yes' if v.overfit else 'No' }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="mb-0 small">Underfitting would show as low scores on train too; the train scores are close to the validation scores and the signal in the data is weak, so the limit is the data and not the capacity of the models.</p>
+  {% else %}
+    {{ pending("The overfitting report is not available (ml/artifacts/overfitting.json).") }}
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3" data-testid="champion">
+  <h2 class="h4 fw-bold">Champion and final performance</h2>
+  <p>{{ a.manifest.selection_rule }}</p>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Model</th><th class="text-end">Mean CV ROC AUC</th><th class="text-end">Gap to the best</th><th class="text-center">Tied</th><th class="text-end">Mean CV recall</th><th>Decision</th></tr></thead>
+    <tbody>
+      {% for row in a.selection %}
+        <tr class="{{ 'table-success' if row.is_champion }}">
+          <td>{{ row.display_name }}</td><td class="text-end">{{ '%.4f'|format(row.cv_roc_auc) }}</td><td class="text-end">{{ '%.4f'|format(row.gap) }}</td>
+          <td class="text-center">{{ 'Yes' if row.tied else 'No' }}</td><td class="text-end">{{ '%.4f'|format(row.cv_recall) }}</td>
+          <td>{% if row.is_champion %}<span class="badge text-bg-success">Official model</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p>The official model is <strong>{{ d.champion_display }}</strong>. On the independent test split it reaches ROC AUC {{ '%.3f'|format(a.metrics[d.champion].test.roc_auc) }} and recall {{ '%.3f'|format(a.metrics[d.champion].test.recall) }}; its confusion matrix has {{ '{:,}'.format(cm[1][1]) }} defaulters found, {{ '{:,}'.format(cm[1][0]) }} missed, {{ '{:,}'.format(cm[0][1]) }} false alarms and {{ '{:,}'.format(cm[0][0]) }} repaid loans correctly cleared.</p>
+  {% if a.manifest.success_criteria %}
+    <h3 class="h6 fw-bold">Success criteria</h3>
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Criterion</th><th class="text-end">Threshold</th><th class="text-end">Value</th><th>Result</th></tr></thead>
+      <tbody>
+        {% for item in a.manifest.success_criteria.results %}
+          <tr><td>{{ item.criterion }}</td><td class="text-end">{{ item.threshold }}</td><td class="text-end">{{ item.value }}</td><td>{% if item.passed %}<span class="badge text-bg-success">Pass</span>{% else %}<span class="badge text-bg-danger">Fail</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3" data-testid="subgroups">
+  <h2 class="h4 fw-bold">Bias by subgroup (age and employment type)</h2>
+  {% if sg %}
+    <p>Test split, official model. This analysis is only reported: it was not used to tune or select a model.</p>
+    {% for dimension, title_text in (('age_range', 'Age range'), ('employment_type', 'Employment type')) %}
+      <h3 class="h6 fw-bold">{{ title_text }}</h3>
+      <table class="table table-sm align-middle">
+        <thead><tr><th>{{ title_text }}</th><th class="text-end">Rows</th><th class="text-end">Real default rate</th><th class="text-end">Flagged rate</th><th class="text-end">Recall</th><th class="text-end">ROC AUC</th></tr></thead>
+        <tbody>
+          {% for label, g in sg.models[d.champion][dimension].items() %}
+            <tr><td>{{ label }}</td><td class="text-end">{{ '{:,}'.format(g.rows) }}</td><td class="text-end">{{ pct(g.default_rate) }}</td><td class="text-end">{{ pct(g.predicted_default_rate) }}</td><td class="text-end">{{ pct(g.recall) if g.recall is defined else 'n/a' }}</td><td class="text-end">{{ '%.3f'|format(g.roc_auc) if g.roc_auc is defined else 'n/a' }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+    {% for finding in sg.findings or [] %}
+      <div class="alert alert-{{ 'danger' if finding.severity == 'high' else 'warning' }}" data-testid="finding-{{ finding.id }}">
+        <h3 class="h6 fw-bold">Finding: {{ finding.title }}</h3>
+        <p class="mb-1">{{ finding.summary }}</p>
+        <p class="mb-0"><strong>Recommendation.</strong> {{ finding.recommendation }}</p>
+      </div>
+    {% endfor %}
+  {% else %}
+    {{ pending("The subgroup analysis is not available (ml/artifacts/subgroups.json).") }}
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3" id="without-age" data-testid="without-age">
+  <h2 class="h4 fw-bold">Experiment: feature selection without Age</h2>
+  {% if dm %}
+    {% set w = dm.experiments.without_age %}
+    <p>The champion with the same hyperparameters and the same cross-validation on the train split, without the age. The flagged rates come from out-of-fold predictions, so the test split is not used. The model in production is not changed.</p>
+    <table class="table table-sm align-middle w-auto">
+      <thead><tr><th></th><th class="text-end">With Age</th><th class="text-end">Without Age</th></tr></thead>
+      <tbody>
+        <tr><td>CV ROC AUC</td><td class="text-end">{{ pair(w.with_age.cv.roc_auc) }}</td><td class="text-end">{{ pair(w.without_age.cv.roc_auc) }}</td></tr>
+        <tr><td>CV recall</td><td class="text-end">{{ pair(w.with_age.cv.recall) }}</td><td class="text-end">{{ pair(w.without_age.cv.recall) }}</td></tr>
+        <tr><td>Flagged as default (all ages)</td><td class="text-end">{{ pct(w.with_age.flagged_rate) }}</td><td class="text-end">{{ pct(w.without_age.flagged_rate) }}</td></tr>
+      </tbody>
+    </table>
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Age range</th><th class="text-end">Real default rate</th><th class="text-end">Flagged with Age</th><th class="text-end">Flagged without Age</th><th class="text-end">Recall with Age</th><th class="text-end">Recall without Age</th></tr></thead>
+      <tbody>
+        {% for label, g in w.by_age_range.items() %}
+          <tr><td>{{ label }}</td><td class="text-end">{{ pct(g.default_rate) }}</td><td class="text-end">{{ pct(g.flagged_rate_with_age) }}</td><td class="text-end">{{ pct(g.flagged_rate_without_age) }}</td><td class="text-end">{{ pct(g.recall_with_age) }}</td><td class="text-end">{{ pct(g.recall_without_age) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {{ figure('age_experiment.png', 'Share of applicants flagged as default by age range, with and without Age (out-of-fold, train split)') }}
+    <p class="mb-1">{{ dm.interpretation[4] }}</p>
+    <p class="mb-1">{{ dm.interpretation[5] }}</p>
+    <p class="mb-0">{{ dm.interpretation[6] }}</p>
+  {% else %}
+    {{ pending("The dimensionality report with the experiment is not available (ml/artifacts/dimensionality_report.json).") }}
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3" id="expert-review" data-testid="expert-review">
+  <h2 class="h4 fw-bold">Domain expert review</h2>
+  {% if expert.complete %}
+    <table class="table table-sm w-auto">
+      <tbody>
+        <tr><th class="fw-normal">Name</th><td>{{ expert.fields.name }}</td></tr>
+        <tr><th class="fw-normal">Role</th><td>{{ expert.fields.role }}</td></tr>
+        <tr><th class="fw-normal">Organization</th><td>{{ expert.fields.organization }}</td></tr>
+        <tr><th class="fw-normal">Date</th><td>{{ expert.fields.date }}</td></tr>
+      </tbody>
+    </table>
+    <div style="white-space: pre-wrap" data-testid="expert-body">{{ expert.body }}</div>
+  {% else %}
+    {{ pending("The review by a domain expert has not been done yet. This section will show the name, role, organization and date of the expert, the questions and the answers, and the conclusions, taken from docs/expert_review.md.") }}
+    {% if expert.found and expert.body %}
+      <details>
+        <summary class="small text-muted">Questions prepared for the expert</summary>
+        <div class="small mt-2" style="white-space: pre-wrap">{{ expert.body }}</div>
+      </details>
+    {% endif %}
+  {% endif %}
+</section>
+
+<script type="application/json" id="models-data">{{ {"metrics": a.metrics, "champion": d.champion, "active": "comparison"}|tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/model_charts.js') }}"></script>
+{% endblock %}

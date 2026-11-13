@@ -40,6 +40,11 @@ def _nav(html):
     return re.search(r"<nav.*?</nav>", html, re.DOTALL).group(0)
 
 
+def _credit_menu(html):
+    """The Credit Evaluation dropdown of the navbar (the Methodology dropdown is a different one)."""
+    return _nav(html).split('id="credit-menu"')[1]
+
+
 # Access
 
 @pytest.mark.parametrize("path", PAGES + OLD_DETAIL_PAGES)
@@ -110,7 +115,7 @@ def test_example_banner_disappears_with_trained_models(app, demo_client, monkeyp
 # Credit menu in the navbar
 
 def test_credit_menu_lists_prediction_models_and_comparison_in_order(demo_client):
-    nav = _nav(demo_client.get("/credit/").get_data(as_text=True))
+    nav = _credit_menu(demo_client.get("/credit/").get_data(as_text=True))
     items = [label.strip() for label in re.findall(r'class="dropdown-item"[^>]*>([^<]+)<', nav)]
     assert items == (
         ["New evaluation (official model)"]
@@ -120,7 +125,7 @@ def test_credit_menu_lists_prediction_models_and_comparison_in_order(demo_client
 
 
 def test_credit_menu_links_to_each_tab(demo_client):
-    nav = _nav(demo_client.get("/credit/").get_data(as_text=True))
+    nav = _credit_menu(demo_client.get("/credit/").get_data(as_text=True))
     hrefs = re.findall(r'class="dropdown-item" href="([^"]+)"', nav)
     assert hrefs == ["/credit/"] + [f"/credit/models/#{tab}" for tab in TABS]
 
