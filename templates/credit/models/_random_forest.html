@@ -1,6 +1,6 @@
 {# Tab "Random Forest". Metrics, charts and the prediction form come from the shared macros and read the
    JSON artifacts. The chosen hyperparameters and the metrics in the text are template variables, not typed values. #}
-{% from "credit/models/_macros.html" import model_panel, predict_form, about_section %}
+{% from "credit/models/_macros.html" import model_panel, predict_form, about_section with context %}
 {% set m = catalog.metrics.random_forest %}
 {% set run = (catalog.experiments.models.random_forest.runs|selectattr('selected')|first) if catalog.experiments else none %}
 {% set p = run.params if run else m.params %}

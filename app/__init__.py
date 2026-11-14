@@ -6,13 +6,14 @@ from flask import Flask
 from config import config_by_name
 from ml.features import ARTIFACTS_DIR, EXAMPLE_ARTIFACTS_DIR
 
-from .auth.services import auth_enabled, get_current_user
+from .auth.services import auth_enabled, get_current_user, home_url_for
 from .cli import register_cli
 from .credit.prediction_log import PredictionLog
 from .credit.services import ModelRegistry, PredictionService
 from .errors import register_error_handlers
 from .extensions import csrf, db, migrate
 from .logging_config import configure_logging
+from .menus import PUBLIC_MENU, private_menu
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -74,18 +75,27 @@ def create_app(config_name=None):
     @app.context_processor
     def inject_auth_state():
         # Available in every template: current_user and auth_enabled.
-        return {"current_user": get_current_user(), "auth_enabled": auth_enabled()}
+        user = get_current_user()
+        return {
+            "current_user": user,
+            "auth_enabled": auth_enabled(),
+            "public_menu": PUBLIC_MENU,
+            "private_menu": private_menu(user),
+            "home_url": home_url_for(user) if user else "/",
+        }
 
     return app
 
 
 def register_blueprints(app):
     """Attach every feature blueprint to the application."""
+    from .admin import bp as admin_bp
     from .auth import bp as auth_bp
     from .credit import bp as credit_bp
     from .dashboard import bp as dashboard_bp
     from .main import bp as main_bp
     from .methodology import bp as methodology_bp
+    from .reviews import bp as reviews_bp
     from .transactions import bp as transactions_bp
 
     app.register_blueprint(main_bp)
@@ -94,3 +104,5 @@ def register_blueprints(app):
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(credit_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(reviews_bp)
+    app.register_blueprint(admin_bp)

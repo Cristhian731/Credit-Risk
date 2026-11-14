@@ -1,7 +1,7 @@
 """Income and expense routes. Data is read and written through the repository."""
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
-from ..auth.services import get_current_user, login_required
+from ..auth.services import get_current_user, roles_required
 from ..services.repository import (
     delete_transaction,
     get_transaction,
@@ -38,7 +38,7 @@ def _as_form(transaction):
 
 
 @bp.route("/")
-@login_required
+@roles_required("applicant")
 def index():
     """List the current user's transactions, one page (?page=N) at a time."""
     page = paginate_transactions(
@@ -50,7 +50,7 @@ def index():
 
 
 @bp.route("/new", methods=["GET", "POST"])
-@login_required
+@roles_required("applicant")
 def new():
     """GET: show the form. POST: validate and save an income or expense."""
     action, title = url_for("transactions.new"), "New transaction"
@@ -70,7 +70,7 @@ def new():
 
 
 @bp.route("/<int:transaction_id>/edit", methods=["GET", "POST"])
-@login_required
+@roles_required("applicant")
 def edit(transaction_id):
     """GET: show the form filled in. POST: validate exactly like ``new`` and update."""
     transaction = _owned_or_404(transaction_id)
@@ -91,7 +91,7 @@ def edit(transaction_id):
 
 
 @bp.route("/<int:transaction_id>/delete", methods=["GET", "POST"])
-@login_required
+@roles_required("applicant")
 def delete(transaction_id):
     """GET: ask for confirmation (nothing is deleted). POST: delete."""
     transaction = _owned_or_404(transaction_id)

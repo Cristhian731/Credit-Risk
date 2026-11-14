@@ -48,10 +48,26 @@ def _credit_menu(html):
 # Access
 
 @pytest.mark.parametrize("path", PAGES + OLD_DETAIL_PAGES)
-def test_model_pages_require_login(client, auth_on, path):
+def test_model_pages_are_public_and_read_only(client, auth_on, path):
+    """The results of the models are public; the prediction forms are only for staff."""
     response = client.get(path)
+    assert response.status_code in (200, 302)
+    if response.status_code == 200:
+        assert 'data-testid="predict-' not in response.get_data(as_text=True)
+
+
+def test_predicting_with_a_model_requires_a_session(client, auth_on):
+    response = client.post("/credit/models/xgboost/predict", data=FORM)
     assert response.status_code == 302
     assert response.headers["Location"].startswith("/auth/login")
+
+
+def test_an_applicant_cannot_predict_with_a_model(applicant_client):
+    assert applicant_client.post("/credit/models/xgboost/predict", data=FORM).status_code == 403
+
+
+def test_staff_see_the_prediction_forms(analyst_client):
+    assert 'data-testid="predict-xgboost"' in analyst_client.get("/credit/models/").get_data(as_text=True)
 
 
 @pytest.mark.parametrize("path", PAGES)
@@ -62,9 +78,9 @@ def test_model_pages_open_after_login(client, auth_on, path):
 
 
 @pytest.mark.parametrize("name", ["svm", "XGBoost", "manifest.json", "_example"])
-def test_unknown_model_name_is_404(demo_client, name):
-    assert demo_client.get(f"/credit/models/{name}/").status_code == 404
-    assert demo_client.post(f"/credit/models/{name}/predict", data=FORM).status_code == 404
+def test_unknown_model_name_is_404(analyst_client, name):
+    assert analyst_client.get(f"/credit/models/{name}/").status_code == 404
+    assert analyst_client.post(f"/credit/models/{name}/predict", data=FORM).status_code == 404
 
 
 @pytest.mark.parametrize("name", MODEL_NAMES)
@@ -112,22 +128,27 @@ def test_example_banner_disappears_with_trained_models(app, demo_client, monkeyp
     assert "Example data" not in demo_client.get("/credit/models/").get_data(as_text=True)
 
 
-# Credit menu in the navbar
+# Private menu of the applicant (the sidebar)
 
-def test_credit_menu_lists_prediction_models_and_comparison_in_order(demo_client):
-    nav = _credit_menu(demo_client.get("/credit/").get_data(as_text=True))
-    items = [label.strip() for label in re.findall(r'class="dropdown-item"[^>]*>([^<]+)<', nav)]
-    assert items == (
-        ["New evaluation (official model)"]
-        + [DISPLAY_NAMES[name] for name in MODEL_NAMES]
-        + ["Model Comparison"]
-    )
+def _sidebar(html):
+    return re.search(r'<nav class="app-sidebar".*?</nav>', html, re.DOTALL).group(0)
 
 
-def test_credit_menu_links_to_each_tab(demo_client):
-    nav = _credit_menu(demo_client.get("/credit/").get_data(as_text=True))
-    hrefs = re.findall(r'class="dropdown-item" href="([^"]+)"', nav)
-    assert hrefs == ["/credit/"] + [f"/credit/models/#{tab}" for tab in TABS]
+def test_applicant_sidebar_lists_the_applicant_pages_in_order(demo_client):
+    nav = _sidebar(demo_client.get("/credit/").get_data(as_text=True))
+    labels = [label.strip() for label in re.findall(r'class="nav-link[^"]*"[^>]*>([^<]+)<', nav)]
+    assert labels == ["Dashboard", "My finances", "New request", "My requests"]
+
+
+def test_applicant_sidebar_links_to_the_credit_pages(demo_client):
+    nav = _sidebar(demo_client.get("/credit/").get_data(as_text=True))
+    hrefs = re.findall(r'class="nav-link[^"]*" href="([^"]+)"', nav)
+    assert hrefs == ["/dashboard/", "/transactions/", "/credit/", "/credit/history"]
+
+
+def test_public_menu_links_to_the_models_page(demo_client):
+    html = demo_client.get("/credit/").get_data(as_text=True)
+    assert 'href="/credit/models/"' in html
 
 
 def test_credit_form_still_works_as_before(demo_client):
@@ -189,28 +210,28 @@ def test_each_tab_shows_experiments_and_overfitting(demo_client, name):
 
 
 @pytest.mark.parametrize("name", MODEL_NAMES)
-def test_tab_form_predicts_with_that_model_and_saves_nothing(demo_client, demo_user, name):
+def test_tab_form_predicts_with_that_model_and_saves_nothing(analyst_client, name):
     from app.services import repository
 
-    response = demo_client.post(f"/credit/models/{name}/predict", data=FORM)
+    response = analyst_client.post(f"/credit/models/{name}/predict", data=FORM)
     html = response.get_data(as_text=True)
     assert response.status_code == 200
     assert f'data-testid="predict-result-{name}"' in html
     assert re.search(r"(Approved|Medium Risk|High Risk)</strong> &middot; estimated default risk", html)
     assert f'class="tab-pane fade show active" id="{name}"' in html
-    assert repository.list_credit_applications(demo_user.id) == []
+    assert repository.list_credit_applications(1) == []
 
 
-def test_tab_form_reports_invalid_values_without_a_result(demo_client):
-    response = demo_client.post("/credit/models/xgboost/predict", data={**FORM, "credit_score": "900"})
+def test_tab_form_reports_invalid_values_without_a_result(analyst_client):
+    response = analyst_client.post("/credit/models/xgboost/predict", data={**FORM, "credit_score": "900"})
     html = response.get_data(as_text=True)
     assert response.status_code == 400
     assert "must be between" in html
     assert 'data-testid="predict-result-xgboost"' not in html
 
 
-def test_tab_form_without_trained_models_answers_503(demo_client, example_only):
-    response = demo_client.post("/credit/models/xgboost/predict", data=FORM)
+def test_tab_form_without_trained_models_answers_503(analyst_client, example_only):
+    response = analyst_client.post("/credit/models/xgboost/predict", data=FORM)
     assert response.status_code == 503
     assert "not available" in response.get_data(as_text=True)
 

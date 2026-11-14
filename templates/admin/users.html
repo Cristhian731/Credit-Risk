@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Users and roles | Credit Risk{% endblock %}
+{% block content %}
+<section class="py-4">
+  <h1 class="h3 fw-bold mb-3">Users and roles</h1>
+  <p class="text-muted">New accounts are always applicants. Only an administrator changes a role.</p>
+  <div class="table-responsive">
+    <table class="table align-middle" data-testid="users-table">
+      <thead><tr><th>Id</th><th>User</th><th>Email</th><th>Role</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.id }}</td>
+          <td>{{ u.username }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.role }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.change_role', user_id=u.id) }}" class="d-flex gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="role" class="form-select form-select-sm" aria-label="Role of {{ u.username }}">
+                {% for r in roles %}<option value="{{ r }}" {% if r == u.role %}selected{% endif %}>{{ r }}</option>{% endfor %}
+              </select>
+              <button class="btn btn-sm btn-primary" type="submit">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

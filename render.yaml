@@ -12,10 +12,11 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    # Migrate, make sure the demo account exists with the current DEMO_PASSWORD (safe to repeat on every
+    # Migrate, make sure the demo account exists with the current DEMO_PASSWORD, create or update the admin and
+    # analyst accounts from the BOOTSTRAP_* variables (the free plan has no shell; all safe to repeat on every
     # start), then serve with ONE worker: the free plan has 512 MB of memory. The timeout leaves room to
     # load a model on the first request after the service wakes up.
-    startCommand: flask --app run db upgrade && flask --app run seed-demo && gunicorn --workers 1 --timeout 120 --bind 0.0.0.0:$PORT run:app
+    startCommand: flask --app run db upgrade && flask --app run seed-demo && flask --app run bootstrap-accounts && gunicorn --workers 1 --timeout 120 --bind 0.0.0.0:$PORT run:app
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
@@ -31,4 +32,13 @@ services:
           name: credit-risk-db
           property: connectionString
       - key: DEMO_PASSWORD
+        sync: false
+      # Admin and analyst accounts, created at start-up. Set the four values in the Render dashboard: they are never stored in the repo.
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: BOOTSTRAP_ANALYST_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ANALYST_PASSWORD
         sync: false

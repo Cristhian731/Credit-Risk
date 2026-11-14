@@ -123,10 +123,10 @@ def test_history_is_linked_from_the_credit_pages_without_a_new_menu_entry(logged
     assert result_page.request.path.startswith("/credit/result/")
     assert 'href="/credit/history"' in result_page.get_data(as_text=True)
 
-    nav = re.search(r"<nav.*?</nav>", form_page, re.DOTALL).group(0)
-    assert "history" not in nav.lower()
-    labels = re.findall(r'class="nav-link[^"]*"[^>]*>([^<]+)<', nav)
-    assert [label.strip() for label in labels] == ["Methodology", "Transactions", "Dashboard", "Credit Evaluation"]
+    top_bar = re.search(r"<nav.*?</nav>", form_page, re.DOTALL).group(0)
+    assert "history" not in top_bar.lower()
+    labels = re.findall(r'class="nav-link[^"]*"[^>]*>([^<]+)<', top_bar)
+    assert [label.strip() for label in labels] == ["Home", "Methodology", "Models", "Resources"]
 
 
 def test_dashboard_counts_the_users_evaluations(logged_in):

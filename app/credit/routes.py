@@ -1,7 +1,7 @@
 """Credit evaluation routes: customer form, prediction result and model pages."""
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
-from ..auth.services import get_current_user, login_required
+from ..auth.services import get_current_user, roles_required
 from ..services.repository import (
     delete_credit_application,
     finance_summary_for_credit,
@@ -74,7 +74,7 @@ def _render_finance_form():
 
 
 @bp.route("/", methods=["GET", "POST"])
-@login_required
+@roles_required("applicant")
 def index():
     """GET: show the customer form. POST: validate, predict, save and show the result.
 
@@ -114,7 +114,7 @@ def index():
 
 
 @bp.route("/history")
-@login_required
+@roles_required("applicant")
 def history():
     """List the current user's past evaluations, newest first, one page (?page=N) at a time."""
     page = paginate_credit_applications(
@@ -126,7 +126,7 @@ def history():
 
 
 @bp.route("/history/<int:application_id>/delete", methods=["GET", "POST"])
-@login_required
+@roles_required("applicant")
 def delete(application_id):
     """GET: ask for confirmation (nothing is deleted). POST: delete.
 
@@ -158,14 +158,14 @@ def delete(application_id):
 
 
 @bp.route("/result")
-@login_required
+@roles_required("applicant")
 def result_without_id():
     """Old address without an id: the results now live in the history."""
     return redirect(url_for("credit.history"))
 
 
 @bp.route("/result/<int:application_id>")
-@login_required
+@roles_required("applicant")
 def result(application_id):
     """Show a saved evaluation, loaded from the database by id and owner.
 
@@ -192,6 +192,12 @@ def model_label(model_version):
     return f"{DISPLAY_NAMES[name]} (version {version})"
 
 
+def can_test_models():
+    """True for an analyst or administrator, who see the prediction forms of the models page."""
+    user = get_current_user()
+    return user is not None and user.role in ("analyst", "admin")
+
+
 def _render_models(active="comparison", form=None, result=None, status=200):
     """The tabbed model page: one tab per model plus the comparison."""
     registry = get_registry()
@@ -202,6 +208,7 @@ def _render_models(active="comparison", form=None, result=None, status=200):
         selection=registry.selection_summary(catalog),
         margin=CHAMPION_AUC_MARGIN,
         active=active,
+        can_test=can_test_models(),
         form=form or {},
         result=result,
         field_order=FIELD_ORDER,
@@ -211,14 +218,12 @@ def _render_models(active="comparison", form=None, result=None, status=200):
 
 
 @bp.route("/models/")
-@login_required
 def models():
-    """Tabs: Logistic Regression, Random Forest, XGBoost and Comparison (example data until real artifacts exist)."""
+    """Tabs: Logistic Regression, Random Forest, XGBoost and Comparison. Public and read only; staff can also try a model."""
     return _render_models()
 
 
 @bp.route("/models/<name>/")
-@login_required
 def model_detail(name):
     """Old address of one model: it now lives in a tab of /credit/models/. Unknown names answer 404."""
     if name not in MODEL_NAMES:
@@ -229,7 +234,7 @@ def model_detail(name):
 
 
 @bp.route("/models/<name>/predict", methods=["POST"])
-@login_required
+@roles_required("analyst", "admin")
 def model_predict(name):
     """Predict one application with the chosen model. Nothing is saved: it is a comparison tool."""
     if name not in MODEL_NAMES:

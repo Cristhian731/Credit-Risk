@@ -37,3 +37,33 @@ def demo_user(app):
 
     user, _created = ensure_demo_user()
     return user
+
+
+STAFF_PASSWORD = "staff-password-2026"
+
+
+def _logged_in_client(app, role):
+    """A test client logged in (authentication on) as a new account with ``role``."""
+    from app.auth.services import upsert_account
+
+    app.config["AUTH_ENABLED"] = True
+    upsert_account(f"{role}@example.com", STAFF_PASSWORD, role)
+    test_client = app.test_client()
+    response = test_client.post("/auth/login", data={"email": f"{role}@example.com", "password": STAFF_PASSWORD})
+    assert response.status_code == 302
+    return test_client
+
+
+@pytest.fixture
+def analyst_client(app):
+    return _logged_in_client(app, "analyst")
+
+
+@pytest.fixture
+def admin_client(app):
+    return _logged_in_client(app, "admin")
+
+
+@pytest.fixture
+def applicant_client(app):
+    return _logged_in_client(app, "applicant")

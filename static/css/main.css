@@ -51,3 +51,38 @@ section[id],
   padding-left: 2rem;
   text-indent: -2rem;
 }
+
+/* Private area: sidebar with the pages of the role. */
+.app-sidebar {
+  background: #fff;
+  border-bottom: 1px solid #dde3ea;
+  padding: 12px 16px;
+}
+
+.app-sidebar-title {
+  color: var(--cr-blue);
+  letter-spacing: 0.04em;
+}
+
+.app-sidebar .nav-link {
+  color: var(--cr-navy);
+  border-radius: 6px;
+}
+
+.app-sidebar .nav-link.active {
+  background: var(--cr-soft);
+  color: var(--cr-blue);
+  font-weight: 600;
+}
+
+@media (min-width: 992px) {
+  .app-sidebar {
+    flex: 0 0 220px;
+    border-bottom: 0;
+    border-right: 1px solid #dde3ea;
+    padding: 24px 16px;
+  }
+  .app-main {
+    min-width: 0;
+  }
+}
