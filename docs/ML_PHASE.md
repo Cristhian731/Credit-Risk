@@ -40,16 +40,30 @@ app/credit/routes.py     /credit/  (prediction with the official model)
 The web app never imports training code (`dataset`, `pipelines`, `evaluate`, `train`). It only
 imports `ml.features` and `ml.schemas`, and loads the saved artifacts.
 
-### Current state (Sprint 0)
+### Current state (blocks B1 to B5)
 
-- Everything above is a stub (`NotImplementedError`) except `ml/schemas.py`, the example
-  artifacts and the model pages.
-- While `ml/artifacts/manifest.json` does not exist:
-  - `ModelRegistry.predict` delegates to the placeholder `PredictionService`, so `/credit/`
-    behaves exactly as before;
-  - the model pages read `ml/artifacts/_example/` and show an **Example data** banner.
-- The placeholder (`ml/train_placeholder_model.py`, `credit_model.pkl`, `scaler.pkl`) stays
-  until the real models replace it.
+Everything above is built and merged. The work was done in five blocks, one squash-merged pull
+request each (the number is the PR in `develop`):
+
+| Block | Branch | PR | What it delivered |
+|---|---|---|---|
+| B1 | `feat/ml-real-model` | #1 | Dataset loading and split, `to_model_frame`, the three pipelines, hyperparameter search, `evaluate`, `train`, champion rule, `manifest`, `metrics`, `data_report`, `experiments`, `overfitting` and `subgroups` artifacts; the real training run |
+| B2 | `feat/dimensionality-notebook` | #2 | Colab notebook: EDA, PCA, t-SNE, PCA experiment and the "without Age" experiment; `dimensionality_report.json` |
+| B3 | `feat/credit-model-pages` | #3 | Registry that serves the champion, `model_version` in each evaluation, the four-tab model pages, the sanity test; then #4 (`fix/about-section-test`: the TODO marker is not required) and #6 (`docs/algorithm-texts`: the "About this algorithm" texts) |
+| B3b | `feat/finance-credit-link` | #7 | "Check my credit risk": income and DTI prefilled from the user's transactions |
+| B4 | `feat/methodology-pages` | #8 | Public Methodology pages (overview and six phases), demo account with `DEMO_PASSWORD`, prediction log with retention, `python -m ml.monitor`, expert review template |
+| B5 | `chore/deploy-render` | #9 | `render.yaml`, complete README, this document, deployment on Render |
+
+The plan of three work streams (data, ML, web) became a single stream: the three teammates agreed
+that the code is written by the project lead, so the sub-branches of the original plan
+(`feat/ml-eda-dataset`, `feat/ml-evaluate`, `feat/ml-train-pipelines`, `feat/credit-model-ui`,
+`feat/credit-registry`) were never created. The EDA lives in the notebook, not in
+`notebooks/01_eda.ipynb`.
+
+Without `ml/artifacts/manifest.json` the app still falls back to the placeholder model
+(`ml/train_placeholder_model.py`, `credit_model.pkl`, `scaler.pkl`) and the model pages read
+`ml/artifacts/_example/` with an **Example data** banner. The repository ships real artifacts, so
+neither fallback is used.
 
 ## Contracts
 
@@ -79,7 +93,7 @@ and every model exposes `predict_proba`.
 | Form field | Model column | Conversion |
 |---|---|---|
 | `age` | `Age` | clip 18-69 |
-| `monthly_income` | `Income` | TODO: x12 if the EDA confirms Income is annual |
+| `monthly_income` | `Income` | x12 (the dataset Income is annual, see `data_report.json`) |
 | `employment_status` | `EmploymentType` | employed -> Full-time, self_employed -> Self-employed, unemployed -> Unemployed, retired -> Part-time |
 | `years_employment` | `MonthsEmployed` | x12 |
 | `credit_score` | `CreditScore` | clip 300-849 |
@@ -235,39 +249,43 @@ official model gives the result. Nothing is stored: both values are calculated o
 
 ## Ownership
 
-| Stream | Owner | Files |
-|---|---|---|
-| data | Teammate A | `ml/dataset.py`, `ml/evaluate.py`, `notebooks/01_eda.ipynb`, CRISP-DM section of the report; tests `test_ml_dataset.py`, `test_ml_evaluate.py` |
-| ml | Cristhian | `ml/features.py` (`to_model_frame`), `ml/pipelines.py`, `ml/train.py`, `app/credit/services.py` (`ModelRegistry`), PR reviews; tests `test_ml_features.py`, `test_ml_pipelines.py`, `test_ml_train.py`, `test_model_registry.py` |
-| web | Cristhian | `app/credit/routes.py` (model pages), `templates/credit/models.html`, `templates/credit/models/*.html` (the three tabs and their "About this algorithm" texts), navbar, `static/js/model_charts.js`; tests `test_credit_models_routes.py`, `test_credit_champion.py` |
+All code of this phase was written and reviewed by the project lead (Cristhian). The roles of the
+original plan (data, ML, web) are only kept as a map of the files:
 
-Shared and protected: `ml/schemas.py` and the example artifacts (contract changes only with
-team agreement); `app/models.py`, `app/services/repository.py` and `app/auth/services.py` are not
-changed in this phase, and there are no schema changes.
+| Stream | Files |
+|---|---|
+| data | `ml/dataset.py`, `ml/evaluate.py`, the notebook and `dimensionality_report.json`; tests `test_ml_dataset.py`, `test_ml_evaluate.py`, `test_dimensionality_notebook.py` |
+| ml | `ml/features.py`, `ml/pipelines.py`, `ml/train.py`, `ml/monitor.py`, `app/credit/services.py` (`ModelRegistry`); tests `test_ml_features.py`, `test_ml_pipelines.py`, `test_ml_train.py`, `test_model_registry.py`, `test_monitoring.py` |
+| web | `app/credit/routes.py`, `app/methodology/`, `templates/credit/`, `templates/methodology/`, navbar, `static/js/`; tests `test_credit_models_routes.py`, `test_credit_champion.py`, `test_methodology.py`, `test_finance_credit_link.py` |
+| deployment | `render.yaml`, `README.md`; test `test_deploy_config.py` |
 
-Skeleton tests are marked `@pytest.mark.skip(reason="Sprint N - owner: data|ml|web")` and describe
-the expected behaviour in their docstring. Implementing a stub means removing the skip from its
-tests and making them pass; never delete a test.
+Shared and protected: `ml/schemas.py` and the example artifacts (contract changes only with team
+agreement); `app/models.py`, `app/services/repository.py` and `app/auth/services.py` belong to the
+database and authentication teammates and have no schema changes in this phase.
+
+Tests that need files that are not versioned (the dataset, the trained artifacts) use
+`skipif` with the reason; no test is skipped for being unimplemented. Never delete a test to make
+the suite pass.
 
 ## Branches
 
 ```
-develop
- |- feat/ml-real-model            (Sprint 1: data and models)
- |   |- feat/ml-eda-dataset       data: EDA notebook, dataset.py
- |   |- feat/ml-evaluate          data: evaluate.py
- |   |- feat/ml-train-pipelines   ml: features.py, pipelines.py, train.py, ModelRegistry
- |- feat/credit-model-pages       (Sprint 2: web)
-     |- feat/credit-model-ui      web: model pages, charts, navbar
-     |- feat/credit-registry      ml: ModelRegistry per-model predictions
+main      published branch (default, contributors and the Colab badge); receives develop with a merge commit
+ '- develop      integration branch; every block is one squash-merged pull request
+     |- feat/ml-real-model, feat/dimensionality-notebook          (B1, B2)
+     |- feat/credit-model-pages, feat/finance-credit-link            (B3, B3b)
+     |- feat/methodology-pages, chore/deploy-render             (B4, B5)
 ```
 
-- Sub-branches open PRs into their phase branch; phase branches open PRs into `develop`.
-- Keep branches up to date with `git merge develop` (or the phase branch). No rebase, no force push.
-- `python -m pytest -q` must pass before every PR.
-- Conventional Commits in English (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `build`).
+- Conventional Commits in English (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `build`),
+  one commit per block.
+- `develop` -> `main` is a normal merge (not squash) so that `main` keeps every commit and the
+  authorship of the teammates.
+- `python -m pytest -q` must pass before every PR; CI runs it on SQLite and PostgreSQL.
+- No rebase and no force push on published branches.
 
 ## Dependencies
+
 
 `pandas==3.1.1` and XGBoost 3.4.1. `xgboost-cpu` (CPU-only, much smaller) has no macOS wheels,
 so `requirements.txt` uses environment markers:
