@@ -22,6 +22,11 @@ EMPLOYMENT_STATUSES = ("employed", "self_employed", "retired", "unemployed")
 PAYMENT_HISTORIES = ("good", "fair", "poor")
 RISK_LABELS = ("Approved", "Medium Risk", "High Risk")
 
+# Allowed values for User.role. The registration always creates an applicant; only an
+# administrator changes a role, and the first administrator is created from the command line.
+ROLES = ("applicant", "analyst", "admin")
+DEFAULT_ROLE = "applicant"
+
 
 def utcnow():
     return datetime.now(timezone.utc)
@@ -43,11 +48,13 @@ class User(db.Model):
     """A registered person who owns finances, clients and credit applications."""
 
     __tablename__ = "users"
+    __table_args__ = (db.CheckConstraint(_in_check("role", ROLES), name="ck_users_role"),)
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default=DEFAULT_ROLE, server_default=DEFAULT_ROLE)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
     categories = db.relationship("Category", back_populates="user")
@@ -55,6 +62,10 @@ class User(db.Model):
     budgets = db.relationship("Budget", back_populates="user")
     clients = db.relationship("Client", back_populates="user")
     credit_applications = db.relationship("CreditApplication", back_populates="user")
+
+    @validates("role")
+    def _validate_role(self, key, value):
+        return _require_choice(key, value, ROLES)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

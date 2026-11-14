@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Resources | Credit Risk{% endblock %}
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <h1 class="h3 fw-bold mb-3">Resources</h1>
+    <p class="text-muted">Material of the project. Each item is linked here when it is published.</p>
+    <ul class="list-group" data-testid="resources-list">
+      <li class="list-group-item d-flex justify-content-between"><span>Technical report (PDF)</span><span class="text-muted">Available at delivery</span></li>
+      <li class="list-group-item d-flex justify-content-between"><span>Source code repository</span><span class="text-muted">Available at delivery</span></li>
+      <li class="list-group-item d-flex justify-content-between"><span>Training notebook (Colab)</span><span class="text-muted">Available at delivery</span></li>
+      <li class="list-group-item d-flex justify-content-between"><span>Technical manual and user manual</span><span class="text-muted">Available at delivery</span></li>
+      <li class="list-group-item d-flex justify-content-between"><span>Project video</span><span class="text-muted">Available at delivery</span></li>
+      <li class="list-group-item"><a href="{{ url_for('methodology.overview') }}">Methodology: the six CRISP-ML(Q) phases</a></li>
+      <li class="list-group-item"><a href="{{ url_for('credit.models') }}">Models: results of the trained models (read only)</a></li>
+    </ul>
+  </div>
+</section>
+{% endblock %}

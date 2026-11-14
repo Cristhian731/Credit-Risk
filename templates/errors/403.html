@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Access denied | Credit Risk{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="text-center">
+    <p class="display-1 fw-bold text-muted">403</p>
+    <h1 class="h3 fw-bold mb-3">Access denied</h1>
+    <p class="text-muted mb-4">Your role does not allow you to open this page.</p>
+    <a href="{{ home_url }}" class="btn btn-primary">Back to my home</a>
+  </div>
+</section>
+{% endblock %}

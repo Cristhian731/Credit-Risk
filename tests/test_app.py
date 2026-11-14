@@ -84,7 +84,7 @@ def test_base_layout_shows_navigation(client, demo_user):
     ):
         assert f'href="/#{anchor}"' in html
 
-    for label in ("Transactions", "Dashboard", "Credit Evaluation", "Log in"):
+    for label in ("My finances", "Dashboard", "New request", "Models", "Resources", "Log in"):
         assert label in html
 
 

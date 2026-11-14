@@ -106,8 +106,55 @@ def purge_prediction_log_command(days):
     click.echo(f"Deleted {deleted} predictions older than {days} days; {kept} kept.")
 
 
+@click.command("create-user")
+@click.option("--email", required=True, help="Email of the account (it is also its login).")
+@click.option("--role", required=True, type=click.Choice(["applicant", "analyst", "admin"]))
+@click.option("--username", default=None, help="Display name (default: the part of the email before @).")
+@click.option(
+    "--password-env",
+    default="NEW_USER_PASSWORD",
+    show_default=True,
+    help="Name of the environment variable that holds the password. It is never taken from an argument.",
+)
+@with_appcontext
+def create_user_command(email, role, username, password_env):
+    """Create or update an account with a role (the only way to create an analyst or an administrator)."""
+    import os
+
+    from .auth.services import upsert_account
+
+    password = os.environ.get(password_env, "")
+    if not password:
+        raise click.ClickException(f"Set the environment variable {password_env} with the password of the account.")
+    try:
+        user, created = upsert_account(email, password, role, username=username)
+    except ValueError as error:
+        raise click.ClickException(str(error))
+    click.echo(f"{'Created' if created else 'Updated'} {user.role} account {user.email}.")
+
+
+@click.command("bootstrap-accounts")
+@with_appcontext
+def bootstrap_accounts_command():
+    """Create or update the admin and analyst accounts named by the BOOTSTRAP_* variables (safe to repeat)."""
+    import os
+
+    from .auth.services import bootstrap_accounts
+
+    try:
+        done = bootstrap_accounts(os.environ)
+    except ValueError as error:
+        raise click.ClickException(str(error))
+    if not done:
+        click.echo("No BOOTSTRAP_* accounts configured.")
+    for role, email, created in done:
+        click.echo(f"{'Created' if created else 'Updated'} {role} account {email}.")
+
+
 def register_cli(app):
     """Attach the CLI commands to the application."""
     app.cli.add_command(adopt_legacy_db_command)
     app.cli.add_command(seed_demo_command)
+    app.cli.add_command(create_user_command)
+    app.cli.add_command(bootstrap_accounts_command)
     app.cli.add_command(purge_prediction_log_command)

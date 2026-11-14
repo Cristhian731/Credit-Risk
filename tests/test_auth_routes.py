@@ -114,11 +114,15 @@ def test_home_shows_login_card_when_anonymous(client):
     assert "Log in to evaluate a loan" in html
 
 
-def test_home_redirects_to_dashboard_when_logged_in(client, user):
-    login(client)
-    response = client.get("/")
+def test_login_goes_to_the_dashboard_of_an_applicant(client, user):
+    response = client.post("/auth/login", data={"email": user.email, "password": PASSWORD})
     assert response.status_code == 302
     assert response.headers["Location"] == "/dashboard/"
+
+
+def test_home_stays_public_when_logged_in(client, user):
+    login(client)
+    assert client.get("/").status_code == 200
 
 
 def test_logout_requires_post(client, user):
