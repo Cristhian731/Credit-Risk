@@ -57,7 +57,7 @@ technical report show the same numbers because they read the same files.
 | 1. Business and data understanding | `/methodology/phase-1`; `ml/artifacts/data_report.json` |
 | 2. Data engineering | `/methodology/phase-2`; `ml/dataset.py`, `ml/features.py`; EDA, PCA and t-SNE in the Colab notebook (`dimensionality_report.json`) |
 | 3. Model engineering | `/methodology/phase-3`; `ml/pipelines.py`, `ml/train.py`; `experiments.json` (every hyperparameter run) |
-| 4. Evaluation | `/methodology/phase-4`; `metrics.json`, `overfitting.json`, `subgroups.json` (age and employment findings) and the domain expert review (`docs/expert_review.md`) |
+| 4. Evaluation | `/methodology/phase-4`; `metrics.json`, `overfitting.json`, `subgroups.json` (age and employment findings) and the domain expert review: not conducted; see the validation protocol in `docs/expert_review.md` |
 | 5. Deployment | `/methodology/phase-5`; `render.yaml`, this README, the credit pages |
 | 6. Monitoring and maintenance | `/methodology/phase-6`; `ml/monitor.py`, the prediction log and its retention policy |
 
