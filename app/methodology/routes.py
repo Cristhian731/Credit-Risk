@@ -19,6 +19,9 @@ from .services import (
     load_artifacts,
 )
 
+# Retraining rule of Phase 6: retrain if the ROC AUC falls more than this below the validated value.
+RETRAIN_AUC_DROP = 0.03
+
 
 @bp.app_context_processor
 def inject_phases():
@@ -75,5 +78,6 @@ def phase(number):
             log=current_app.extensions["prediction_log"].summary(),
             retention_days=current_app.config["PREDICTION_LOG_RETENTION_DAYS"],
             psi_thresholds={"stable": PSI_STABLE, "alert": PSI_ALERT},
+            retrain_auc_drop=RETRAIN_AUC_DROP,
         )
     return render_template(f"methodology/phase{number}.html", **_context(**extra))
