@@ -1,11 +1,4 @@
-"""Database models for Credit Risk (Flask-SQLAlchemy).
 
-Built from the model contract and the DataBase branch. Class, table, column
-and relationship names are part of the contract: other modules and
-``tests/test_models_contract.py`` depend on them, so keep them unchanged.
-
-Tables are created in ``app.create_app()``, never at import time.
-"""
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import validates
@@ -13,11 +6,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .extensions import db
 
-# Allowed values for Category.type and Transaction.type.
+
 TRANSACTION_TYPES = ("income", "expense")
 
-# Allowed values for CreditApplication text columns. They match the option
-# values of the credit form and the encodings in ml/features.py.
 EMPLOYMENT_STATUSES = ("employed", "self_employed", "retired", "unemployed")
 PAYMENT_HISTORIES = ("good", "fair", "poor")
 RISK_LABELS = ("Approved", "Medium Risk", "High Risk")
@@ -40,7 +31,7 @@ def _require_choice(field, value, allowed):
 
 
 class User(db.Model):
-    """A registered person who owns finances, clients and credit applications."""
+    
 
     __tablename__ = "users"
 
@@ -64,7 +55,6 @@ class User(db.Model):
 
 
 class Category(db.Model):
-    """A label that groups transactions, e.g. "Food" or "Salary"."""
 
     __tablename__ = "categories"
     __table_args__ = (
@@ -88,7 +78,6 @@ class Category(db.Model):
 
 
 class Transaction(db.Model):
-    """A single income or expense recorded by a user."""
 
     __tablename__ = "transactions"
     __table_args__ = (
@@ -127,11 +116,8 @@ class Budget(db.Model):
 
 
 class Client(db.Model):
-    """A customer whose loan applications are evaluated."""
 
     __tablename__ = "clients"
-    # The same document may belong to clients of different users, but a user
-    # cannot register it twice.
     __table_args__ = (
         db.UniqueConstraint("user_id", "document_number", name="uq_clients_user_id_document_number"),
     )
@@ -147,12 +133,6 @@ class Client(db.Model):
 
 
 class CreditApplication(db.Model):
-    """One loan evaluation: the customer data at that moment and the prediction.
-
-    Joins the DataBase branch's CreditProfile, LoanApplication and Prediction
-    tables into one row, as the contract requires. Feature columns use the
-    names of the credit form fields and ``ml.features.FEATURE_ORDER``.
-    """
 
     __tablename__ = "credit_applications"
     __table_args__ = (
@@ -169,7 +149,6 @@ class CreditApplication(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Customer data used by the model.
     age = db.Column(db.Integer, nullable=False)
     monthly_income = db.Column(db.Numeric(14, 2), nullable=False)
     employment_status = db.Column(db.String(20), nullable=False)
@@ -182,7 +161,6 @@ class CreditApplication(db.Model):
     previous_loans = db.Column(db.Integer, nullable=False, default=0)
     payment_history = db.Column(db.String(10), nullable=False)
 
-    # Prediction.
     risk_label = db.Column(db.String(20), nullable=False)
     risk_percent = db.Column(db.Float, nullable=False)  # 0-100
     model_version = db.Column(db.String(30), nullable=True)
