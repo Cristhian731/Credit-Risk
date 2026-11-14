@@ -111,14 +111,15 @@ def expert_review():
 
     The file starts with a header between ``---`` lines (``status``, ``name``, ``role``, ``organization``,
     ``date``). The review is complete only when ``status`` is ``complete`` and the name and the date are
-    filled in; until then the page says "Pending".
+    filled in. With ``status: not_conducted`` the page states that no review took place and shows the
+    questionnaire as the validation protocol; with any other status it says "Pending".
     """
     path = current_app.config["EXPERT_REVIEW_PATH"]
     try:
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
     except OSError:
-        return {"complete": False, "fields": {}, "body": "", "found": False}
+        return {"complete": False, "not_conducted": False, "fields": {}, "body": "", "found": False}
     fields, body = {}, text
     match = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
     if match:
@@ -127,7 +128,8 @@ def expert_review():
             fields[key.strip().lower()] = value.strip()
         body = text[match.end():]
     complete = fields.get("status", "").lower() == "complete" and bool(fields.get("name")) and bool(fields.get("date"))
-    return {"complete": complete, "fields": fields, "body": body.strip(), "found": True}
+    not_conducted = fields.get("status", "").lower() == "not_conducted"
+    return {"complete": complete, "not_conducted": not_conducted, "fields": fields, "body": body.strip(), "found": True}
 
 
 def demo_credentials():

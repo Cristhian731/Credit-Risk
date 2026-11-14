@@ -161,10 +161,25 @@ def test_phase_4_has_metrics_overfitting_bias_and_the_experiment_without_age(pub
     assert "accuracy" in html.lower() and "Success criteria" in html
 
 
-def test_phase_4_expert_review_is_pending_until_it_is_filled(public_client):
+def test_phase_4_says_that_no_expert_review_was_conducted(public_client):
     html = _html(public_client, "/methodology/phase-4")
     section = html.split('data-testid="expert-review"')[1].split("</section>")[0]
-    assert "Pending" in section and "has not been done yet" in section
+    assert 'data-testid="expert-not-conducted"' in section and "no domain expert review was conducted" in section
+    assert "not validated by an expert" in section and "Q8." in section
+    assert "has not been done yet" not in section and "Answer:" not in section
+
+
+def test_phase_4_states_the_team_decision_about_the_age(public_client):
+    html = _html(public_client, "/methodology/phase-4")
+    section = html.split('data-testid="age-decision"')[1].split("</div>")[0]
+    assert "keeps Age" in section and "18 to 24" in section and "Thresholds per age group" in section
+    assert "not been validated by a domain expert" in section
+
+
+def test_phase_1_states_the_cost_assumption_without_figures(public_client):
+    html = _html(public_client, "/methodology/phase-1")
+    section = html.split('data-testid="cost-assumption"')[1].split("</section>")[0]
+    assert "Team assumption, to be validated with a lending institution" in section and "false negative" in section
 
 
 def test_phase_4_expert_review_complete_shows_the_expert(app, public_client, tmp_path):
@@ -190,11 +205,10 @@ def test_phase_4_expert_review_stays_pending_if_incomplete(app, public_client, t
     assert "has not been done yet" in section
 
 
-def test_the_repository_expert_review_file_is_the_pending_template(public_client):
-    path = "docs/expert_review.md"
-    text = open(path, encoding="utf-8").read()
-    assert text.startswith("---\nstatus: pending")
-    assert len(re.findall(r"^Q\d\.", text, re.M)) in (6, 7, 8)
+def test_the_repository_expert_review_file_says_not_conducted_and_has_the_questionnaire(public_client):
+    text = open("docs/expert_review.md", encoding="utf-8").read()
+    assert text.startswith("---\nstatus: not_conducted")
+    assert len(re.findall(r"^Q\d\.", text, re.M)) == 8
 
 
 def test_phase_5_has_inputs_outputs_dependencies_instructions_and_the_finance_flow(public_client):

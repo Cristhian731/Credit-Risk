@@ -119,4 +119,10 @@
     {{ pending("The success criteria are not recorded in the manifest.") }}
   {% endif %}
 </section>
+
+<section class="card p-4 mb-3" data-testid="cost-assumption">
+  <h2 class="h4 fw-bold">Cost assumption</h2>
+  <p class="mb-2">Team assumption, to be validated with a lending institution: a false negative (approving an applicant who does not repay) costs several times more than a false positive (reviewing more closely a good customer). For this reason the recall of the default class is prioritized, and it is the tie-break rule when models have a similar ROC AUC.</p>
+  <p class="text-muted small mb-0">No figures are given: the real costs depend on the institution and were not provided by one.</p>
+</section>
 {% endblock %}
