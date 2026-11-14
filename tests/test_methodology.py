@@ -211,6 +211,9 @@ def test_phase_6_has_indicators_thresholds_the_simulated_report_and_the_retentio
         assert f'data-testid="{test_id}"' in html
     assert "SIMULATED" in html and 'id="psi-chart"' in html
     assert "below 0.1" in html and "above 0.25" in html
+    for owner in ("Cristhian Stiven Aza Diaz", "Harrison Camargo", "Alejandro Alarcon"):
+        assert owner in html
+    assert "every month" in html and "every quarter" in html and "more than 0.03" in html
     retention = html.split('data-testid="retention-days">')[1].split("<")[0]
     assert retention == f"{app.config['PREDICTION_LOG_RETENTION_DAYS']} days"
 

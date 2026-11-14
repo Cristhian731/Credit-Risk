@@ -13,7 +13,7 @@ must be reviewed before any real use.
 
 | | |
 |---|---|
-| **Published application** | <https://credit-risk-dxit.onrender.com> (free Render plan: the first request after 15 minutes of inactivity takes about a minute) |
+| **Published application** | <https://credit-risk-dxit.onrender.com> (free Render plan: the first request after 15 minutes of inactivity takes about 1-1.5 minutes) |
 | **Demo account** | `demo@creditrisk.local` and the password shown on the public Methodology overview (`DEMO_PASSWORD`) |
 | **Notebook (Google Colab)** | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Cristhian731/Credit-Risk/blob/main/notebooks/credit_risk_dimensionality.ipynb) |
 | **Methodology (no login)** | `/methodology/`: overview and one page for each CRISP-ML phase |
