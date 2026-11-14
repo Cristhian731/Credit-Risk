@@ -6,7 +6,7 @@
 {% set dm = a.dimensionality %}
 {% set cm = a.metrics[d.champion].confusion_matrix %}
 <h1 class="fw-bold">Phase 4 &middot; {{ title }}</h1>
-<p class="text-muted">How good the models are, whether they overfit, whom they treat differently and what an expert thinks.</p>
+<p class="text-muted">How good the models are, whether they overfit, whom they treat differently and what could not be validated with an expert.</p>
 
 <section class="card p-4 mb-3">
   <h2 class="h4 fw-bold">Metrics and why they were chosen</h2>
@@ -142,7 +142,13 @@
     {{ figure('age_experiment.png', 'Share of applicants flagged as default by age range, with and without Age (out-of-fold, train split)') }}
     <p class="mb-1">{{ dm.interpretation[4] }}</p>
     <p class="mb-1">{{ dm.interpretation[5] }}</p>
-    <p class="mb-0">{{ dm.interpretation[6] }}</p>
+    <p class="mb-3">{{ dm.interpretation[6] }}</p>
+    <div class="alert alert-info mb-0" data-testid="age-decision">
+      <h3 class="h6 fw-bold">Team decision about the age</h3>
+      <p class="mb-1">The team <strong>keeps Age</strong> in the official model: without it the cross-validated ROC AUC falls from {{ '%.3f'|format(w.with_age.cv.roc_auc[0]) }} to {{ '%.3f'|format(w.without_age.cv.roc_auc[0]) }}, a loss of discrimination that would make the model less useful. The audit by age range (<code>subgroups.json</code>) and the experiment above show the price of this choice: the champion flags {{ pct(w.by_age_range['18-24'].flagged_rate_with_age) }} of the applicants aged 18 to 24, while the real default rate of that group is {{ pct(w.by_age_range['18-24'].default_rate) }}.</p>
+      <p class="mb-1"><strong>Mitigation.</strong> Every rejection of an applicant aged 18 to 24 must be reviewed by a person; the model is a support tool, not an automatic decision.</p>
+      <p class="mb-0"><strong>Future work.</strong> Thresholds per age group. This decision was taken by the team and has not been validated by a domain expert.</p>
+    </div>
   {% else %}
     {{ pending("The dimensionality report with the experiment is not available (ml/artifacts/dimensionality_report.json).") }}
   {% endif %}
@@ -160,6 +166,16 @@
       </tbody>
     </table>
     <div style="white-space: pre-wrap" data-testid="expert-body">{{ expert.body }}</div>
+  {% elif expert.not_conducted %}
+    <div class="alert alert-warning" data-testid="expert-not-conducted">
+      <strong>Limitation: no domain expert review was conducted.</strong> No interview or review with a domain expert took place in this project, so the models, the features, the decision threshold and the treatment of the age are <strong>not validated by an expert</strong>. The questionnaire below is the validation protocol that must be completed with a domain expert, for example a credit analyst of a lending institution, before the models are used in any real credit decision.
+    </div>
+    {% if expert.body %}
+      <details open>
+        <summary class="small text-muted">Validation protocol: questionnaire for the domain expert</summary>
+        <div class="small mt-2" style="white-space: pre-wrap">{{ expert.body }}</div>
+      </details>
+    {% endif %}
   {% else %}
     {{ pending("The review by a domain expert has not been done yet. This section will show the name, role, organization and date of the expert, the questions and the answers, and the conclusions, taken from docs/expert_review.md.") }}
     {% if expert.found and expert.body %}
