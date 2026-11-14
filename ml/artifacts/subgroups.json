@@ -1,0 +1,307 @@
+{
+  "version": "2026-11-13.1",
+  "split": {
+    "set": "test",
+    "rows": 51070,
+    "note": "Reported only; never used to tune or select a model."
+  },
+  "findings": [
+    {
+      "id": "age_bias",
+      "dimension": "age_range",
+      "model": "logistic_regression",
+      "severity": "high",
+      "title": "The champion flags young applicants far more often than older ones",
+      "summary": "Applicants aged 18-24 are predicted as defaults 85% of the time although 21% actually default (about 4.1 times the real rate). At ages 55-69 only 6% are flagged (5% actually default). Recall of class 1 goes from 93% for the youngest to 18% for the oldest: young defaulters are caught almost always at the price of many false alarms, while older defaulters are mostly missed. Age is the most important input (25% of the importance), and part of the gap mirrors a real difference in default rates. ROC AUC is similar across ages (0.65 to 0.67), so the ranking quality is comparable and the gap mostly comes from applying one 0.5 threshold with balanced class weights to groups with different base rates.",
+      "evidence": {
+        "predicted_default_rate": {
+          "18-24": 0.8522,
+          "25-34": 0.6867,
+          "35-44": 0.4504,
+          "45-54": 0.2248,
+          "55-69": 0.0571
+        },
+        "default_rate": {
+          "18-24": 0.2104,
+          "25-34": 0.1698,
+          "35-44": 0.1208,
+          "45-54": 0.0852,
+          "55-69": 0.0535
+        },
+        "recall": {
+          "18-24": 0.9263,
+          "25-34": 0.8311,
+          "35-44": 0.6555,
+          "45-54": 0.4161,
+          "55-69": 0.1811
+        }
+      },
+      "recommendation": "Treat age as a sensitive attribute: review the threshold per group, test the model without Age, and keep a human review for rejected young applicants before using it in real decisions."
+    },
+    {
+      "id": "employment_type_gap",
+      "dimension": "employment_type",
+      "model": "logistic_regression",
+      "severity": "moderate",
+      "title": "Flag rates differ by employment type, in line with the real default rates",
+      "summary": "Unemployed applicants are flagged 49% of the time (13.6% actually default) against 29% for Full-time (9.5% actually default). ROC AUC stays between 0.71 and 0.72.",
+      "evidence": {
+        "predicted_default_rate": {
+          "Full-time": 0.2885,
+          "Part-time": 0.398,
+          "Self-employed": 0.3987,
+          "Unemployed": 0.4893
+        },
+        "default_rate": {
+          "Full-time": 0.0948,
+          "Part-time": 0.1218,
+          "Self-employed": 0.112,
+          "Unemployed": 0.1357
+        },
+        "recall": {
+          "Full-time": 0.5763,
+          "Part-time": 0.6782,
+          "Self-employed": 0.665,
+          "Unemployed": 0.7467
+        }
+      },
+      "recommendation": "Monitor these rates in production (Phase 6) and recheck them after each retraining."
+    }
+  ],
+  "models": {
+    "logistic_regression": {
+      "age_range": {
+        "18-24": {
+          "rows": 6834,
+          "default_rate": 0.2104,
+          "predicted_default_rate": 0.8522,
+          "roc_auc": 0.6557,
+          "recall": 0.9263,
+          "precision": 0.2287
+        },
+        "25-34": {
+          "rows": 9873,
+          "default_rate": 0.1698,
+          "predicted_default_rate": 0.6867,
+          "roc_auc": 0.6577,
+          "recall": 0.8311,
+          "precision": 0.2055
+        },
+        "35-44": {
+          "rows": 9925,
+          "default_rate": 0.1208,
+          "predicted_default_rate": 0.4504,
+          "roc_auc": 0.6735,
+          "recall": 0.6555,
+          "precision": 0.1758
+        },
+        "45-54": {
+          "rows": 9789,
+          "default_rate": 0.0852,
+          "predicted_default_rate": 0.2248,
+          "roc_auc": 0.6485,
+          "recall": 0.4161,
+          "precision": 0.1577
+        },
+        "55-69": {
+          "rows": 14649,
+          "default_rate": 0.0535,
+          "predicted_default_rate": 0.0571,
+          "roc_auc": 0.6701,
+          "recall": 0.1811,
+          "precision": 0.1697
+        }
+      },
+      "employment_type": {
+        "Full-time": {
+          "rows": 12724,
+          "default_rate": 0.0948,
+          "predicted_default_rate": 0.2885,
+          "roc_auc": 0.7209,
+          "recall": 0.5763,
+          "precision": 0.1893
+        },
+        "Part-time": {
+          "rows": 12837,
+          "default_rate": 0.1218,
+          "predicted_default_rate": 0.398,
+          "roc_auc": 0.7112,
+          "recall": 0.6782,
+          "precision": 0.2075
+        },
+        "Self-employed": {
+          "rows": 12682,
+          "default_rate": 0.112,
+          "predicted_default_rate": 0.3987,
+          "roc_auc": 0.7093,
+          "recall": 0.665,
+          "precision": 0.1869
+        },
+        "Unemployed": {
+          "rows": 12827,
+          "default_rate": 0.1357,
+          "predicted_default_rate": 0.4893,
+          "roc_auc": 0.7173,
+          "recall": 0.7467,
+          "precision": 0.2071
+        }
+      }
+    },
+    "random_forest": {
+      "age_range": {
+        "18-24": {
+          "rows": 6834,
+          "default_rate": 0.2104,
+          "predicted_default_rate": 0.8553,
+          "roc_auc": 0.6633,
+          "recall": 0.9263,
+          "precision": 0.2279
+        },
+        "25-34": {
+          "rows": 9873,
+          "default_rate": 0.1698,
+          "predicted_default_rate": 0.7371,
+          "roc_auc": 0.6596,
+          "recall": 0.8556,
+          "precision": 0.1971
+        },
+        "35-44": {
+          "rows": 9925,
+          "default_rate": 0.1208,
+          "predicted_default_rate": 0.4155,
+          "roc_auc": 0.6783,
+          "recall": 0.6364,
+          "precision": 0.185
+        },
+        "45-54": {
+          "rows": 9789,
+          "default_rate": 0.0852,
+          "predicted_default_rate": 0.1273,
+          "roc_auc": 0.6531,
+          "recall": 0.3058,
+          "precision": 0.2047
+        },
+        "55-69": {
+          "rows": 14649,
+          "default_rate": 0.0535,
+          "predicted_default_rate": 0.054,
+          "roc_auc": 0.6719,
+          "recall": 0.1926,
+          "precision": 0.1909
+        }
+      },
+      "employment_type": {
+        "Full-time": {
+          "rows": 12724,
+          "default_rate": 0.0948,
+          "predicted_default_rate": 0.2968,
+          "roc_auc": 0.7198,
+          "recall": 0.5829,
+          "precision": 0.1862
+        },
+        "Part-time": {
+          "rows": 12837,
+          "default_rate": 0.1218,
+          "predicted_default_rate": 0.3829,
+          "roc_auc": 0.7168,
+          "recall": 0.6622,
+          "precision": 0.2106
+        },
+        "Self-employed": {
+          "rows": 12682,
+          "default_rate": 0.112,
+          "predicted_default_rate": 0.388,
+          "roc_auc": 0.7152,
+          "recall": 0.6622,
+          "precision": 0.1913
+        },
+        "Unemployed": {
+          "rows": 12827,
+          "default_rate": 0.1357,
+          "predicted_default_rate": 0.4422,
+          "roc_auc": 0.7256,
+          "recall": 0.7214,
+          "precision": 0.2214
+        }
+      }
+    },
+    "xgboost": {
+      "age_range": {
+        "18-24": {
+          "rows": 6834,
+          "default_rate": 0.2104,
+          "predicted_default_rate": 0.8566,
+          "roc_auc": 0.6619,
+          "recall": 0.9284,
+          "precision": 0.228
+        },
+        "25-34": {
+          "rows": 9873,
+          "default_rate": 0.1698,
+          "predicted_default_rate": 0.6693,
+          "roc_auc": 0.6628,
+          "recall": 0.8168,
+          "precision": 0.2072
+        },
+        "35-44": {
+          "rows": 9925,
+          "default_rate": 0.1208,
+          "predicted_default_rate": 0.3862,
+          "roc_auc": 0.6823,
+          "recall": 0.6147,
+          "precision": 0.1923
+        },
+        "45-54": {
+          "rows": 9789,
+          "default_rate": 0.0852,
+          "predicted_default_rate": 0.1845,
+          "roc_auc": 0.6618,
+          "recall": 0.3813,
+          "precision": 0.1761
+        },
+        "55-69": {
+          "rows": 14649,
+          "default_rate": 0.0535,
+          "predicted_default_rate": 0.064,
+          "roc_auc": 0.6756,
+          "recall": 0.2143,
+          "precision": 0.1793
+        }
+      },
+      "employment_type": {
+        "Full-time": {
+          "rows": 12724,
+          "default_rate": 0.0948,
+          "predicted_default_rate": 0.2759,
+          "roc_auc": 0.7231,
+          "recall": 0.5589,
+          "precision": 0.192
+        },
+        "Part-time": {
+          "rows": 12837,
+          "default_rate": 0.1218,
+          "predicted_default_rate": 0.3785,
+          "roc_auc": 0.7212,
+          "recall": 0.6718,
+          "precision": 0.2161
+        },
+        "Self-employed": {
+          "rows": 12682,
+          "default_rate": 0.112,
+          "predicted_default_rate": 0.3807,
+          "roc_auc": 0.7158,
+          "recall": 0.6481,
+          "precision": 0.1908
+        },
+        "Unemployed": {
+          "rows": 12827,
+          "default_rate": 0.1357,
+          "predicted_default_rate": 0.4554,
+          "roc_auc": 0.7274,
+          "recall": 0.7364,
+          "precision": 0.2195
+        }
+      }
+    }
+  }
+}

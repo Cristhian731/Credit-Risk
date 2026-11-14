@@ -1,0 +1,32 @@
+{# Small helpers of the Methodology pages. #}
+
+{% macro pair(values) %}{{ '%.3f'|format(values[0]) }} &plusmn; {{ '%.3f'|format(values[1]) }}{% endmacro %}
+
+{% macro pct(value, digits=1) %}{{ ('%.' ~ digits ~ 'f')|format(100 * value) }}%{% endmacro %}
+
+{# A figure saved by the dimensionality notebook in static/img/methodology/. #}
+{% macro figure(file, caption) %}
+<figure class="mb-3">
+  <img src="{{ url_for('static', filename='img/methodology/' ~ file) }}" class="img-fluid border rounded" alt="{{ caption }}">
+  <figcaption class="small text-muted mt-1">{{ caption }}</figcaption>
+</figure>
+{% endmacro %}
+
+{# Content that depends on people or on a file that is not there yet: it is shown clearly, never hidden. #}
+{% macro pending(text) %}
+<div class="alert alert-danger" role="status" data-testid="pending">
+  <strong>Pending.</strong> {{ text }}
+</div>
+{% endmacro %}
+
+{% macro simulated_banner() %}
+<div class="alert alert-warning" role="status" data-testid="simulated-banner">
+  <strong>SIMULATED.</strong> This report was computed on a batch created with a fixed seed and an intentional
+  drift, only to demonstrate the monitoring procedure. It does not describe real traffic.
+</div>
+{% endmacro %}
+
+{# Table of rows with the models as lines: columns are (title, value-of-metrics) pairs. #}
+{% macro section(title, id=none) %}
+<h2 class="h4 fw-bold mt-4"{% if id %} id="{{ id }}"{% endif %}>{{ title }}</h2>
+{% endmacro %}

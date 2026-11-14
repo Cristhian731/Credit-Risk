@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{# Layout of the public Methodology pages: a list of the overview and the six phases next to the page.
+   Every figure of the pages is read from ml/artifacts/*.json (see app/methodology/services.py). #}
+{% block title %}{% if active_phase %}Phase {{ active_phase }} &middot; {{ title }}{% else %}Methodology{% endif %} &middot; Credit Risk{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  {% if a.is_example %}
+    <div class="alert alert-warning" role="alert" data-testid="example-banner">
+      <strong>Example data.</strong> The trained artifacts are not available, so the figures of the models are
+      fictitious placeholders and the reports of the phases are not shown.
+    </div>
+  {% endif %}
+  <div class="row g-4">
+    <aside class="col-lg-3">
+      <nav class="list-group" aria-label="Methodology">
+        <a class="list-group-item list-group-item-action {{ 'active' if active_phase == 0 }}"
+           href="{{ url_for('methodology.overview') }}">Overview</a>
+        {% for number, name in phases %}
+          <a class="list-group-item list-group-item-action {{ 'active' if active_phase == number }}"
+             href="{{ url_for('methodology.phase', number=number) }}">Phase {{ number }} &middot; {{ name }}</a>
+        {% endfor %}
+      </nav>
+    </aside>
+    <div class="col-lg-9">
+      {% block page %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

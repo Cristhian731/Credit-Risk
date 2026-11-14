@@ -6,6 +6,11 @@ from ml.features import MODEL_PATH, SCALER_PATH
 
 LOCAL_DATABASE_URL = "sqlite:///credit_risk.db"
 
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+# Password of the demo account (flask seed-demo and the Methodology overview). Development and tests
+# have a default; production must set DEMO_PASSWORD in the environment.
+DEFAULT_DEMO_PASSWORD = "demo-password-2026"
+
 # Plain scheme -> SQLAlchemy scheme with the driver listed in requirements.txt.
 _DATABASE_DRIVERS = {
     "postgres://": "postgresql+psycopg://",
@@ -45,6 +50,7 @@ def database_url():
 class Config:
     """Settings shared by every environment."""
 
+    PROJECT_ROOT = PROJECT_ROOT
     SECRET_KEY = os.environ.get("SECRET_KEY")
     DEBUG = False
     TESTING = False
@@ -84,12 +90,25 @@ class Config:
     CREDIT_APPROVED_MAX_RISK = 0.33
     CREDIT_MEDIUM_MAX_RISK = 0.66
 
+    # Demo account password (public on purpose: the demo holds no real data). No default here.
+    DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD") or None
+
+    # Prediction log (JSON lines, one per prediction, no customer name or document). An empty
+    # value turns it off. The file is ignored by git. Entries older than the retention are purged
+    # with: flask --app run purge-prediction-log
+    PREDICTION_LOG_PATH = os.environ.get("PREDICTION_LOG_PATH", os.path.join(PROJECT_ROOT, "logs", "predictions.jsonl"))
+    PREDICTION_LOG_RETENTION_DAYS = int(os.environ.get("PREDICTION_LOG_RETENTION_DAYS", "90"))
+
+    # Review of the models by a domain expert, shown in the Methodology (Phase 4).
+    EXPERT_REVIEW_PATH = os.path.join(PROJECT_ROOT, "docs", "expert_review.md")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
     # Real authentication by default in development (and production); testing keeps the base value.
     AUTH_ENABLED = _env_flag("AUTH_ENABLED", True)
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
+    DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD") or DEFAULT_DEMO_PASSWORD
 
 
 class TestingConfig(Config):
@@ -100,6 +119,9 @@ class TestingConfig(Config):
     AUTH_ENABLED = False
     # Tests post forms directly; tests/test_csrf.py turns the protection on.
     WTF_CSRF_ENABLED = False
+    DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD") or DEFAULT_DEMO_PASSWORD
+    # The prediction log is off in tests unless a test turns it on with a temporary path.
+    PREDICTION_LOG_PATH = ""
 
 
 class ProductionConfig(Config):

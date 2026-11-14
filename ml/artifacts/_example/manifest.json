@@ -1,0 +1,17 @@
+{
+  "version": "example-2026-11-10",
+  "trained_at": "2026-11-10T00:00:00Z",
+  "dataset": {
+    "name": "Loan Default Prediction Dataset (example values, not a real training run)",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "rows": 255347
+  },
+  "feature_set": "v2-loan-default",
+  "selection_rule": "Highest mean ROC AUC in 5-fold stratified cross-validation on the train split; models less than 0.01 below the best are tied and the highest mean CV recall (class 1) wins. The 20% test split is only reported.",
+  "champion": "logistic_regression",
+  "models": [
+    "logistic_regression",
+    "random_forest",
+    "xgboost"
+  ]
+}

@@ -126,7 +126,7 @@ def test_history_is_linked_from_the_credit_pages_without_a_new_menu_entry(logged
     nav = re.search(r"<nav.*?</nav>", form_page, re.DOTALL).group(0)
     assert "history" not in nav.lower()
     labels = re.findall(r'class="nav-link[^"]*"[^>]*>([^<]+)<', nav)
-    assert [label.strip() for label in labels] == ["Transactions", "Dashboard", "Credit Evaluation"]
+    assert [label.strip() for label in labels] == ["Methodology", "Transactions", "Dashboard", "Credit Evaluation"]
 
 
 def test_dashboard_counts_the_users_evaluations(logged_in):

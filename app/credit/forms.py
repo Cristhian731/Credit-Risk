@@ -13,12 +13,12 @@ CLIENT_NAME_MIN, CLIENT_NAME_MAX = 2, 120
 # field name -> (label, type, min, max, step)
 NUMERIC_FIELDS = {
     "age": ("Age", int, 18, 100, 1),
-    "monthly_income": ("Monthly Income", float, 0, 10_000_000, 0.01),
+    "monthly_income": ("Monthly Income (USD per month)", float, 0, 10_000_000, 0.01),
     "years_employment": ("Years of Employment", float, 0, 60, 0.1),
     "credit_score": ("Credit Score (300-850)", int, 300, 850, 1),
-    "existing_debt": ("Existing Debt", float, 0, 100_000_000, 0.01),
+    "existing_debt": ("Existing Debt (USD)", float, 0, 100_000_000, 0.01),
     "dti_ratio": ("Debt-to-Income Ratio (%)", float, 0, 100, 0.1),
-    "loan_amount": ("Loan Amount", float, 1, 100_000_000, 0.01),
+    "loan_amount": ("Loan Amount (USD)", float, 1, 100_000_000, 0.01),
     "loan_term": ("Loan Term (months)", int, 1, 480, 1),
     "previous_loans": ("Previous Loans", int, 0, 100, 1),
 }

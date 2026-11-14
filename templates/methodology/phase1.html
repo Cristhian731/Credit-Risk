@@ -1,0 +1,122 @@
+{% extends "methodology/_base.html" %}
+{% from "methodology/_macros.html" import pct, pending %}
+
+{% block page %}
+{% set r = a.data_report %}
+<h1 class="fw-bold">Phase 1 &middot; {{ title }}</h1>
+<p class="text-muted">What problem is solved, for whom, with which data and how success is measured.</p>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">Problem and context</h2>
+  <p>Lenders approve or reject loan applications under uncertainty. A wrong approval (the borrower does not repay) produces a financial loss; a wrong rejection takes away a legitimate customer. Today the decision depends on the experience of the analyst and on fixed rules. A model trained on past loans can give a consistent, data-based estimate of the probability of default for every application.</p>
+  <h3 class="h6 fw-bold">Stakeholders and beneficiaries</h3>
+  <ul>
+    <li><strong>Credit analysts and risk managers</strong> use the estimate to prioritize and decide applications.</li>
+    <li><strong>Applicants</strong> benefit from consistent decisions and, with the finance module, from seeing their own situation.</li>
+    <li><strong>The institution</strong> reduces losses from defaults and keeps good customers.</li>
+    <li><strong>The project team</strong> (university course) builds, evaluates and documents the solution.</li>
+  </ul>
+</section>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">Business objectives and machine learning objectives</h2>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Business objective</th><th>Machine learning objective</th></tr></thead>
+    <tbody>
+      <tr><td>Reduce the losses caused by loans that are not repaid.</td><td>Detect a good share of the applicants who default: high recall of the default class.</td></tr>
+      <tr><td>Treat applicants consistently.</td><td>Rank applicants by risk: high ROC AUC, with a probability that maps to Approved, Medium Risk and High Risk.</td></tr>
+      <tr><td>Keep good customers.</td><td>Keep the false alarms under control and report them (precision) so analysts can review flagged applications.</td></tr>
+      <tr><td>Be able to explain and audit the tool.</td><td>Compare a simple model with more complex ones, document every step and keep results traceable to files.</td></tr>
+    </tbody>
+  </table>
+  <h3 class="h6 fw-bold">Questions the model answers</h3>
+  <ul class="mb-2">
+    <li>What is the probability that this applicant defaults on the loan?</li>
+    <li>Which risk label (Approved, Medium Risk or High Risk) corresponds to that probability?</li>
+    <li>Which features drive the estimate, and does it treat age groups and employment types differently?</li>
+  </ul>
+  <p class="mb-0"><strong>Machine learning task:</strong> binary classification. The target is <code>Default</code>, where 1 means that the borrower defaulted.</p>
+</section>
+
+<section class="card p-4 mb-3" data-testid="data-description">
+  <h2 class="h4 fw-bold">Data: source, variables, size and target</h2>
+  <p>
+    The data are the <a href="{{ kaggle_url }}" rel="noopener">Loan Default Prediction Dataset</a> published on Kaggle under a public domain license:
+    one table with a loan identifier, the predictors and the target.
+  </p>
+  {% if r %}
+    <table class="table table-sm w-auto">
+      <tbody>
+        <tr><th class="fw-normal">Rows</th><td class="text-end">{{ '{:,}'.format(r.before.rows) }}</td></tr>
+        <tr><th class="fw-normal">Columns</th><td class="text-end">{{ r.before.columns }} (identifier, {{ d.n_predictors }} predictors, target)</td></tr>
+        <tr><th class="fw-normal">Defaults (class 1)</th><td class="text-end">{{ '{:,}'.format(d.defaults) }} ({{ pct(r.before.default_rate, 2) }})</td></tr>
+        <tr><th class="fw-normal">SHA-256 of the file</th><td class="text-end"><code class="small">{{ r.dataset.sha256 }}</code></td></tr>
+      </tbody>
+    </table>
+  {% else %}
+    {{ pending("The data report is not available (ml/artifacts/data_report.json).") }}
+  {% endif %}
+  <p class="mb-1"><strong>Variables.</strong> Age, Income, LoanAmount, CreditScore, MonthsEmployed, NumCreditLines, InterestRate, LoanTerm, DTIRatio, Education, EmploymentType, MaritalStatus, HasMortgage, HasDependents, LoanPurpose and HasCoSigner. The models use the {{ d.n_model_features }} that the application form asks for (see Phase 2).</p>
+  <p class="mb-0"><strong>Target.</strong> <code>Default</code>: 1 when the borrower defaulted and 0 when the loan was repaid.</p>
+</section>
+
+<section class="card p-4 mb-3" data-testid="data-quality">
+  <h2 class="h4 fw-bold">Quality, relevance and sufficiency</h2>
+  {% if r %}
+    <ul>
+      <li><strong>Quality.</strong> {{ '{:,}'.format(r.before.null_cells) }} missing cells, {{ '{:,}'.format(r.before.duplicate_rows) }} duplicated rows and {{ '{:,}'.format(r.before.duplicate_ids) }} repeated loan identifiers. The only domain rule that is broken is the months of employment: {{ '{:,}'.format(d.inconsistent_rows) }} rows ({{ '%.1f'|format(d.inconsistent_percent) }}%) report more months employed than the applicant could have worked since the age of 16. Details in Phase 2.</li>
+      <li><strong>Relevance.</strong> The variables that the form asks for (age, income, loan amount, credit score, employment, debt ratio, loan term and credit lines) are standard inputs of a credit assessment. The interest rate is not used because the lender sets it after assessing the risk.</li>
+      <li><strong>Sufficiency.</strong> {{ '{:,}'.format(r.before.rows) }} rows with {{ '{:,}'.format(d.defaults) }} defaults are enough to train and compare three models with a stratified 80/20 split and 5-fold cross-validation, and the classes are imbalanced ({{ pct(r.before.default_rate, 1) }} defaults), which is handled with class weights.</li>
+    </ul>
+  {% else %}
+    {{ pending("The data report is not available.") }}
+  {% endif %}
+</section>
+
+<section class="card p-4 mb-3">
+  <h2 class="h4 fw-bold">Feasibility</h2>
+  <ul class="mb-0">
+    <li><strong>Technical.</strong> The data fit in memory, the three models train in minutes (see Phase 3) and the saved models are small, so the application can load them on a small server.</li>
+    <li><strong>Organizational.</strong> A team of three students, one repository with a protected main branch, automatic tests on every pull request and a free hosting plan. The scope is a prototype, not a production credit system.</li>
+  </ul>
+</section>
+
+<section class="card p-4 mb-3" data-testid="limitations">
+  <h2 class="h4 fw-bold">Limitations and risks</h2>
+  <ul class="mb-0">
+    <li><strong>The dataset looks semi-synthetic.</strong>
+      {% if r %}
+        {{ '{:,}'.format(d.inconsistent_rows) }} rows ({{ '%.1f'|format(d.inconsistent_percent) }}%) have a number of months of employment that is impossible for the age of the applicant, and
+        {% if d.no_outliers %}none of the numeric variables has outliers{% else %}the numeric variables have few outliers{% endif %}:
+        the values are spread evenly inside narrow ranges and the features are almost independent of each other (Phase 2).
+      {% else %}
+        This is computed from the data report, which is not available.
+      {% endif %}
+      The results describe this dataset and may not transfer to the portfolio of a real lender.</li>
+    <li><strong>Weak signal.</strong> The ROC AUC is moderate because only {{ d.n_model_features }} features are used and they carry little signal each.</li>
+    <li><strong>Class imbalance.</strong> Defaults are a minority, so precision is low: the model flags many applications that would have been repaid.</li>
+    <li><strong>Age and fairness.</strong> The age is the most important feature and the model flags young applicants far more often than older ones (Phase 4). It is a sensitive attribute and the tool must not be used for real decisions without human review.</li>
+    <li><strong>Scope.</strong> The application is a prototype: the estimate supports a decision but is not a lending decision.</li>
+  </ul>
+</section>
+
+<section class="card p-4 mb-3" data-testid="success-criteria">
+  <h2 class="h4 fw-bold">Success criteria</h2>
+  <p>They were fixed before training and are evaluated on the official model in <a href="{{ url_for('methodology.phase', number=4) }}">Phase 4</a>.</p>
+  {% if a.manifest.success_criteria %}
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Criterion</th><th class="text-end">Threshold</th><th class="text-end">Value</th><th>Result</th></tr></thead>
+      <tbody>
+        {% for item in a.manifest.success_criteria.results %}
+          <tr>
+            <td>{{ item.criterion }}</td><td class="text-end">{{ item.threshold }}</td><td class="text-end">{{ item.value }}</td>
+            <td>{% if item.passed %}<span class="badge text-bg-success">Pass</span>{% else %}<span class="badge text-bg-danger">Fail</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    {{ pending("The success criteria are not recorded in the manifest.") }}
+  {% endif %}
+</section>
+{% endblock %}

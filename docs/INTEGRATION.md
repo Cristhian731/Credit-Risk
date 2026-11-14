@@ -77,6 +77,8 @@ end becomes the last one.
 
 ## Deploying on Render
 
+`render.yaml` (Blueprint) creates the service and the free PostgreSQL database with the values below; only `DEMO_PASSWORD` is typed in the dashboard. The tables here describe the same settings for a manual setup.
+
 Set these environment variables in the Render dashboard (**Environment** tab). Never commit
 their values.
 
@@ -86,6 +88,7 @@ their values.
 | `DATABASE_URL` | **Yes** | The Render PostgreSQL **Internal Database URL**, e.g. `postgresql://user:password@host:5432/credit_risk`. Plain URLs are mapped to the installed drivers (psycopg, PyMySQL). Without it the app would use a SQLite file that Render erases. |
 | `AUTH_ENABLED` | **Yes** | `true`. It is already the production default; setting it explicitly documents the intent. `false` is demo mode and must never hold real data. |
 | `FLASK_CONFIG` | **Yes** | `production` |
+| `DEMO_PASSWORD` | **Yes** | Password of the public demo account (at least 8 characters). `seed-demo` fails in production without it. |
 | `PYTHON_VERSION` | Recommended | A **full** version of the 3.14 line that CI uses, e.g. `3.14.10` (Render rejects `3.14` here; it needs major.minor.patch). Without it, new Render services already default to 3.14. |
 
 Commands (free plan, which has no Pre-Deploy Command):
@@ -93,7 +96,7 @@ Commands (free plan, which has no Pre-Deploy Command):
 | Setting | Value |
 |---|---|
 | Build Command | `pip install -r requirements.txt` |
-| Start Command | `flask --app run db upgrade && gunicorn run:app` |
+| Start Command | `flask --app run db upgrade && flask --app run seed-demo && gunicorn --workers 1 --timeout 120 --bind 0.0.0.0:$PORT run:app` |
 
 The migrations run on every start and do nothing when the schema is already up to date. On a
 paid plan, `flask --app run db upgrade` can move to the Pre-Deploy Command and the start command
