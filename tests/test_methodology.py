@@ -172,6 +172,7 @@ def test_phase_4_says_that_no_expert_review_was_conducted(public_client):
 def test_phase_4_states_the_team_decision_about_the_age(public_client):
     html = _html(public_client, "/methodology/phase-4")
     section = html.split('data-testid="age-decision"')[1].split("</div>")[0]
+    assert "from 0.711 to 0.652" in section  # 0.6515 rounds half up
     assert "keeps Age" in section and "18 to 24" in section and "Thresholds per age group" in section
     assert "not been validated by a domain expert" in section
 
