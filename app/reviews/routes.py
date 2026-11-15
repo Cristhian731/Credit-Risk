@@ -1,12 +1,12 @@
 """Analyst pages: the review queue, the decision of a request, the outcome and the decisions history.
 
-Only an analyst or an administrator reaches them (BR2). The indicators page is in block D4.
+Only an analyst or an administrator reaches them (BR2).
 """
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
 from ..auth.services import get_current_user, roles_required
 from ..models import DECISIONS, OUTCOMES
-from ..services import rules
+from ..services import indicators, rules
 from ..services.repository import (
     get_application_any,
     paginate_decided_applications,
@@ -16,7 +16,7 @@ from ..services.repository import (
 )
 from . import bp
 
-PLACEHOLDER_ENDPOINTS = {"reviews.indicators"}
+PLACEHOLDER_ENDPOINTS = set()
 
 DECISION_CHOICES = (
     ("Approved", "Approve"),
@@ -104,8 +104,10 @@ def outcome(application_id):
     return redirect(url_for("reviews.detail", application_id=application_id))
 
 
-@bp.route("/indicators")
+@bp.route("/indicators", endpoint="indicators")
 @roles_required("analyst", "admin")
-def indicators():
-    """Indicators (block D4)."""
-    return render_template("placeholder.html", title="Indicators", block="D4")
+def show_indicators():
+    """Requests by status, approval rate, risk distribution, model vs. analyst and decision times."""
+    return render_template(
+        "reviews/indicators.html", data=indicators.request_indicators(), comparison=indicators.prediction_vs_outcome()
+    )

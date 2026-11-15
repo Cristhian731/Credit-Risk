@@ -1,0 +1,71 @@
+{# Shared blocks of the indicators page and the report: every number is calculated when the page is read. #}
+{% macro request_tables(data) %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <h2 class="h6 fw-bold">Requests by status</h2>
+      <table class="table table-sm mb-0" data-testid="by-status">
+        {% for status, count in data.by_status.items() %}
+        <tr><td>{{ status }}</td><td class="text-end">{{ count }}</td></tr>
+        {% endfor %}
+        <tr class="fw-bold"><td>Total</td><td class="text-end">{{ data.total }}</td></tr>
+      </table>
+      <p class="mt-2 mb-0">Approval rate (Approved of Approved and Rejected):
+        <strong data-testid="approval-rate">{{ (data.approval_rate ~ '%') if data.approval_rate is not none else 'no decisions yet' }}</strong></p>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <h2 class="h6 fw-bold">Risk distribution (model labels)</h2>
+      <table class="table table-sm mb-0" data-testid="risk-distribution">
+        {% for label, count in data.risk.items() %}
+        <tr><td>{{ label }}</td><td class="text-end">{{ count }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <h2 class="h6 fw-bold">Model vs. analyst</h2>
+      <table class="table table-sm mb-0" data-testid="coincidence">
+        <tr><td>Decisions that followed the model</td><td class="text-end">{{ data.followed }}</td></tr>
+        <tr><td>Decisions that contradicted it</td><td class="text-end">{{ data.contradicted }}</td></tr>
+        <tr><td>No clear recommendation</td><td class="text-end">{{ data.no_clear }}</td></tr>
+      </table>
+      <p class="mt-2 mb-0">Coincidence rate: <strong>{{ (data.coincidence_rate ~ '%') if data.coincidence_rate is not none else 'not available yet' }}</strong>
+        <span class="text-muted small d-block">Only decisions with a clear recommendation count (Medium Risk and Request documents do not).</span></p>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card p-3">
+      <h2 class="h6 fw-bold">Decision time (request to first decision)</h2>
+      {% if data.decisions_timed %}
+      <p class="mb-0" data-testid="decision-time">Mean <strong>{{ data.decision_hours_mean }} h</strong> &middot; median <strong>{{ data.decision_hours_median }} h</strong> &middot; longest <strong>{{ data.decision_hours_max }} h</strong> over {{ data.decisions_timed }} decided request{{ 's' if data.decisions_timed != 1 }}.</p>
+      {% else %}
+      <p class="mb-0 text-muted" data-testid="decision-time">No decided requests yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro outcome_table(comparison) %}
+<div class="card p-3" data-testid="prediction-vs-outcome">
+  <h2 class="h6 fw-bold">Predictions vs. real outcomes</h2>
+  <p class="text-muted small mb-2">Defaulted is the positive class. {{ comparison.awaiting }} approved request{{ 's' if comparison.awaiting != 1 }} still wait for an outcome.</p>
+  <table class="table table-sm">
+    <thead><tr><th>Model label</th><th class="text-end">Repaid</th><th class="text-end">Defaulted</th></tr></thead>
+    <tbody>
+      {% for label, row in comparison.table.items() %}
+      <tr><td>{{ label }}</td><td class="text-end">{{ row.Repaid }}</td><td class="text-end">{{ row.Defaulted }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if comparison.enough %}
+  <p class="mb-0">Real AUC <strong data-testid="real-auc">{{ comparison.auc }}</strong> &middot; real recall of High Risk <strong>{{ comparison.recall_high_risk }}%</strong>
+    over {{ comparison.outcomes }} outcome{{ 's' if comparison.outcomes != 1 }}. With few outcomes these values are only indicative.</p>
+  {% else %}
+  <p class="mb-0 text-muted" data-testid="real-auc">The real AUC and recall appear when there are outcomes of both classes (Repaid and Defaulted).</p>
+  {% endif %}
+</div>
+{% endmacro %}

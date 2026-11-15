@@ -23,7 +23,7 @@ PUBLIC = [
 ]
 APPLICANT_ONLY = ["/dashboard/", "/transactions/", "/transactions/new", "/credit/", "/credit/history"]
 STAFF = ["/reviews/", "/reviews/history", "/reviews/indicators"]
-ADMIN_ONLY = ["/admin/", "/admin/categories", "/admin/monitoring", "/admin/reports"]
+ADMIN_ONLY = ["/admin/", "/admin/categories", "/admin/monitoring", "/admin/reports", "/admin/reports/decisions.csv"]
 
 ALLOWED = {
     **{path: {ANON, APPLICANT, ANALYST, ADMIN} for path in PUBLIC},
@@ -332,18 +332,8 @@ def test_the_migration_gives_existing_users_the_applicant_role_and_can_be_revers
 
 # Temporary pages
 
-@pytest.mark.skip(reason="Placeholder pages are allowed until block D4 closes; remove this skip then.")
 def test_no_placeholder_page_remains():
     from app.admin.routes import PLACEHOLDER_ENDPOINTS as admin_placeholders
     from app.reviews.routes import PLACEHOLDER_ENDPOINTS as review_placeholders
 
     assert admin_placeholders | review_placeholders == set()
-
-
-def test_placeholder_pages_are_listed_so_the_closing_test_can_find_them(clients):
-    from app.admin.routes import PLACEHOLDER_ENDPOINTS as admin_placeholders
-    from app.reviews.routes import PLACEHOLDER_ENDPOINTS as review_placeholders
-
-    for path in ("/reviews/indicators", "/admin/categories"):
-        assert 'data-testid="placeholder"' in clients[ADMIN].get(path).get_data(as_text=True)
-    assert {"reviews.indicators", "admin.categories"} <= admin_placeholders | review_placeholders
