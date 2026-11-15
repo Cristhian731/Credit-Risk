@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_indicator_tables.html" import outcome_table %}
+{% block title %}Monitoring | Credit Risk{% endblock %}
+{% block content %}
+<section class="py-4 px-3">
+  <h1 class="h3 fw-bold mb-1">Monitoring</h1>
+  <p class="text-muted">Every inference is stored with its date, user, model, version, result, response time and error. The log holds no document number.</p>
+
+  <div class="row g-3 mb-4" data-testid="metrics">
+    <div class="col-6 col-lg-2"><div class="card p-3 text-center"><div class="h4 mb-0">{{ metrics.calls }}</div><div class="small text-muted">Inference calls</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3 text-center"><div class="h4 mb-0">{{ metrics.errors }}</div><div class="small text-muted">Errors</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3 text-center"><div class="h4 mb-0">{{ metrics.mean_ms if metrics.mean_ms is not none else '-' }}</div><div class="small text-muted">Mean ms</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3 text-center"><div class="h4 mb-0">{{ metrics.median_ms if metrics.median_ms is not none else '-' }}</div><div class="small text-muted">Median ms</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3 text-center"><div class="h4 mb-0">{{ metrics.p95_ms if metrics.p95_ms is not none else '-' }}</div><div class="small text-muted">95th percentile ms</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3 text-center"><div class="h4 mb-0">{{ metrics.max_ms if metrics.max_ms is not none else '-' }}</div><div class="small text-muted">Slowest ms</div></div></div>
+  </div>
+
+  <div class="card p-3 mb-4" data-testid="operational-review">
+    <h2 class="h6 fw-bold">Initial operational review</h2>
+    <table class="table table-sm mb-2">
+      <tbody>
+        {% for name, value, ok in checks %}
+        <tr><td>{{ name }}</td><td class="text-end">{{ value }}</td>
+            <td class="text-end">{% if ok %}<span class="badge text-bg-success">OK</span>{% else %}<span class="badge text-bg-warning">Attention</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="small text-muted mb-0">Retraining rule: when the real AUC falls clearly below the AUC of the training report, or the real recall of High Risk falls below the recall of the report, with enough outcomes, the models are retrained and the new version is published with a new version tag. The procedure is in the technical manual.</p>
+  </div>
+
+  {{ outcome_table(comparison) }}
+
+  <h2 class="h5 fw-bold mt-4">Latest errors</h2>
+  <div class="table-responsive">
+    <table class="table table-sm" data-testid="errors-table">
+      <thead><tr><th>Date (UTC)</th><th>User</th><th>Model</th><th>Error</th></tr></thead>
+      <tbody>
+        {% for r in errors %}
+        <tr><td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ r.user }}</td><td>{{ r.model }}</td><td>{{ r.error }}</td></tr>
+        {% else %}
+        <tr><td colspan="4" class="text-muted">No errors recorded.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="h5 fw-bold mt-4">Latest inferences</h2>
+  <div class="table-responsive">
+    <table class="table table-sm" data-testid="inference-table">
+      <thead><tr><th>Date (UTC)</th><th>User</th><th>Model</th><th>Version</th><th>Result</th><th class="text-end">Risk %</th><th class="text-end">ms</th></tr></thead>
+      <tbody>
+        {% for r in recent %}
+        <tr><td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ r.user }}</td><td>{{ r.model }}</td><td>{{ r.model_version }}</td><td>{{ r.result }}</td>
+            <td class="text-end">{{ r.risk_percent if r.risk_percent is not none else '-' }}</td><td class="text-end">{{ r.response_ms }}</td></tr>
+        {% else %}
+        <tr><td colspan="7" class="text-muted">No inferences yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -80,7 +80,7 @@ def test_submission_without_customer_data_is_rejected_and_not_saved(logged_in, f
 
 def test_history_is_empty_at_first(logged_in):
     html = logged_in.get("/credit/history").get_data(as_text=True)
-    assert "No evaluations yet." in html
+    assert "No requests yet." in html
 
 
 def test_history_lists_the_evaluations_newest_first(logged_in):
@@ -100,7 +100,7 @@ def test_history_only_shows_the_users_own_evaluations(client):
     login_as(client, "luis")
     html = client.get("/credit/history").get_data(as_text=True)
     assert "Maria Lopez" not in html
-    assert "No evaluations yet." in html
+    assert "No requests yet." in html
 
 
 def test_history_requires_login(client):
@@ -123,10 +123,10 @@ def test_history_is_linked_from_the_credit_pages_without_a_new_menu_entry(logged
     assert result_page.request.path.startswith("/credit/result/")
     assert 'href="/credit/history"' in result_page.get_data(as_text=True)
 
-    nav = re.search(r"<nav.*?</nav>", form_page, re.DOTALL).group(0)
-    assert "history" not in nav.lower()
-    labels = re.findall(r'class="nav-link[^"]*"[^>]*>([^<]+)<', nav)
-    assert [label.strip() for label in labels] == ["Methodology", "Transactions", "Dashboard", "Credit Evaluation"]
+    top_bar = re.search(r"<nav.*?</nav>", form_page, re.DOTALL).group(0)
+    assert "history" not in top_bar.lower()
+    labels = re.findall(r'class="nav-link[^"]*"[^>]*>([^<]+)<', top_bar)
+    assert [label.strip() for label in labels] == ["Home", "Methodology", "Models", "Resources"]
 
 
 def test_dashboard_counts_the_users_evaluations(logged_in):

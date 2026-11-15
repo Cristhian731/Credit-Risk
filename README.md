@@ -23,11 +23,14 @@ must be reviewed before any real use.
 | Module | What it does |
 |---|---|
 | Transactions and dashboard | Income and expenses saved in the database (edit, delete, pagination); totals are calculated when read, never stored |
-| Credit evaluation (`/credit/`) | The **champion** model (chosen by a documented rule) predicts from 9 form fields; each evaluation is saved with its customer and model version and listed in `/credit/history` |
+| Credit request (`/credit/`) | The applicant sends a request (prefilled from the finances); the **champion** model scores it on the server and the request starts as Pending. Requests are listed with their status in `/credit/history`; open ones can be edited or withdrawn |
+| Analyst pages (`/reviews/`) | Review queue (mandatory reviews first), decision with a written justification (Approve, Reject, Request documents), real outcome (Repaid or Defaulted) of approved requests, decisions history and indicators; each decision stores whether it followed the model |
+| Administrator pages (`/admin/`) | Users and roles, categories, monitoring (inference log with response times and errors, predictions vs. real outcomes, initial operational review) and reports with a CSV of the decisions |
+| Home page (`/`) | Project documentation (problem, objectives, reference framework, methodology and schedule, references) and the links to the resources |
 | Finance to risk (`/credit/?source=finance`) | Prefills the monthly income and the debt-to-income ratio from the user's last complete months |
 | Model pages (`/credit/models/`) | Four tabs (Logistic Regression, Random Forest, XGBoost, Comparison) with metrics, confusion matrix, ROC curve, feature importance, every experiment run and an "About this algorithm" text; each tab can predict with its own model |
 | Methodology (`/methodology/`) | The six CRISP-ML(Q) phases, written from the JSON artifacts: every figure on the pages is read from `ml/artifacts/*.json` |
-| Monitoring | Prediction log (JSON lines, no customer name or document, 90-day retention) and `python -m ml.monitor` (PSI against the train distribution) |
+| Monitoring | Inference log in the database (`inference_logs`) and a local JSON lines copy (no customer name or document, 90-day retention) and `python -m ml.monitor` (PSI against the train distribution) |
 | Authentication and security | Registration, login, logout; CSRF on every form; HttpOnly + SameSite session cookie (Secure in production); other users' records answer 404 |
 
 ## Architecture
@@ -121,11 +124,12 @@ on purpose: never store real data in it.
 
 1. In Render choose **New > Blueprint**, connect the GitHub repository and the branch to deploy (`main`).
 2. When it asks for `DEMO_PASSWORD`, type the password of the demo account (it is not stored in the repository).
+   Also set the four `BOOTSTRAP_*` values (see Roles below) if you want an administrator and an analyst account.
    `SECRET_KEY` is generated, `DATABASE_URL` comes from the database, and `FLASK_CONFIG=production` and
    `PYTHON_VERSION=3.14.10` are set.
 3. Render runs `pip install -r requirements.txt` and starts the service with
-   `flask --app run db upgrade && flask --app run seed-demo && gunicorn --workers 1 --timeout 120 --bind 0.0.0.0:$PORT run:app`.
-   The migrations and `seed-demo` can run on every start: they change nothing when everything is up to date, and
+   `flask --app run db upgrade && flask --app run seed-demo && flask --app run bootstrap-accounts && gunicorn --workers 1 --timeout 120 --bind 0.0.0.0:$PORT run:app`.
+   The migrations, `seed-demo` and `bootstrap-accounts` can run on every start: they change nothing when everything is up to date, and
    `seed-demo` only refreshes the demo password. One worker keeps the memory under the 512 MB of the free plan (the
    registry keeps at most one model in memory).
 
@@ -134,12 +138,23 @@ system is not persistent, so the prediction log (`logs/predictions.jsonl`) is er
 PostgreSQL database **expires 30 days after it is created** (14 more days before it is deleted). Create it again and the
 next start migrates and seeds it. More in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
+## Roles
+
+There are three roles: `applicant`, `analyst` and `admin`. Registration always creates an applicant. Only an
+administrator changes a role (**Users and roles**), and the first administrator and the analyst accounts are created
+only with `create-user` or the `BOOTSTRAP_*` variables, never from the web. The public demo account is always an
+applicant, also with `AUTH_ENABLED=False`. Every private route is protected on the server with
+`roles_required(...)` (`app/auth/services.py`): without a session an HTML page redirects to the login, and with the
+wrong role it answers a 403 page. The menus of each role are listed in `app/menus.py`.
+
 ## Commands
 
 | Command | Purpose |
 |---|---|
 | `flask --app run db upgrade` | Create or update the database schema |
 | `flask --app run seed-demo` | Create the demo user and its sample transactions, and set its password to `DEMO_PASSWORD` (safe to run again) |
+| `flask --app run create-user --role {applicant,analyst,admin} --email EMAIL` | Create or update an account with a role. The password is read from the environment variable `NEW_USER_PASSWORD` (or the one named by `--password-env`), never from an argument |
+| `flask --app run bootstrap-accounts` | Create or update the admin and analyst accounts named by the `BOOTSTRAP_*` variables (safe to run again; skips a role with a missing value) |
 | `flask --app run purge-prediction-log` | Delete the prediction log entries older than `PREDICTION_LOG_RETENTION_DAYS` |
 | `python -m ml.monitor --simulated` | PSI of a SIMULATED batch against the train distribution; writes `ml/artifacts/monitoring_report.json` |
 | `python -m ml.monitor --log logs/predictions.jsonl` | The same with the real prediction log |
@@ -157,6 +172,7 @@ next start migrates and seeds it. More in [docs/INTEGRATION.md](docs/INTEGRATION
 | `TEST_DATABASE_URL` | Database for the test suite (an empty one; tests create and drop tables) | in-memory SQLite |
 | `LOG_LEVEL`, `LOG_FILE` | Log level and optional rotating log file | `INFO`, none |
 | `DEMO_PASSWORD` | Password of the demo account, set by `seed-demo` and shown in the Methodology overview. **Required in production** (no default there) | `demo-password-2026` in development and tests |
+| `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ANALYST_EMAIL`, `BOOTSTRAP_ANALYST_PASSWORD` | Accounts created or updated at every start (Render's free plan has no shell). Set them only in the environment, never in the repository | none |
 | `PREDICTION_LOG_PATH` | JSON lines log of the predictions of the trained models (no customer name or document; ignored by git). Empty turns it off | `logs/predictions.jsonl` (off in tests) |
 | `PREDICTION_LOG_RETENTION_DAYS` | Days that the prediction log is kept (see Phase 6 of the Methodology) | `90` |
 | `CREDIT_MODEL_PATH` | Saved credit classifier | `ml/artifacts/credit_model.pkl` |

@@ -6,6 +6,7 @@ import gc
 import logging
 import os
 import threading
+import time
 
 import joblib
 import numpy as np
@@ -244,3 +245,31 @@ def get_predictor():
 def get_registry():
     """Return the ModelRegistry created by create_app()."""
     return current_app.extensions["model_registry"]
+
+
+def scored_prediction(values, user_id, model=None):
+    """Predict with the champion (or ``model``), time the call and store it in the inference log.
+
+    Every call is logged with its response time, also the ones that fail (the error text is stored
+    and the RuntimeError is raised again). The log holds no document number (BR10).
+    """
+    # Local import: the repository needs the database, this module is also used without it in tests.
+    from ..services.repository import log_inference
+
+    registry = get_registry()
+    started = time.perf_counter()
+    try:
+        result = registry.predict(values, model=model)
+    except RuntimeError as exc:
+        log_inference(user_id, model or "champion", None, None, None, (time.perf_counter() - started) * 1000, str(exc))
+        raise
+    milliseconds = (time.perf_counter() - started) * 1000
+    log_inference(
+        user_id,
+        result.get("model") or "placeholder",
+        result.get("model_version"),
+        result["label"],
+        result["risk_percent"],
+        milliseconds,
+    )
+    return result

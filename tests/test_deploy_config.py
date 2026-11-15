@@ -31,10 +31,15 @@ def test_the_python_version_is_fully_qualified_and_in_the_ci_line():
 
 def test_the_start_command_migrates_seeds_and_serves_with_one_worker():
     command = start_command()
-    steps = ["flask --app run db upgrade", "flask --app run seed-demo", "gunicorn --workers 1 --timeout 120"]
+    steps = [
+        "flask --app run db upgrade",
+        "flask --app run seed-demo",
+        "flask --app run bootstrap-accounts",
+        "gunicorn --workers 1 --timeout 120",
+    ]
     positions = [command.index(step) for step in steps]
     assert positions == sorted(positions)
-    assert command.count("&&") == 2
+    assert command.count("&&") == 3
     assert command.rstrip().endswith("run:app")
 
 

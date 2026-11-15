@@ -184,7 +184,7 @@ def test_evaluations_can_be_deleted_from_the_history_but_not_edited(ana, ana_cli
     evaluation = add_evaluation(ana)
     history = ana_client.get("/credit/history").get_data(as_text=True)
     assert f'href="/credit/history/{evaluation["id"]}/delete"' in history
-    assert "/edit" not in history  # evaluations have no edit action
+    assert "/edit" in history  # an open (Pending) request can be edited until it is decided
 
     assert ana_client.get(f"/credit/history/{evaluation['id']}/edit").status_code == 404
     assert "This cannot be undone" in ana_client.get(f"/credit/history/{evaluation['id']}/delete").get_data(as_text=True)

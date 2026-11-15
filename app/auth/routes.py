@@ -6,6 +6,7 @@ from . import bp
 from .services import (
     authenticate_user,
     auth_enabled,
+    home_url_for,
     logout_user,
     register_user,
 )
@@ -25,7 +26,7 @@ def login():
     """Authenticate a user using the home page login form.
 
     After a successful login the user goes to ``next`` when it is a local
-    path, otherwise to the dashboard.
+    path, otherwise to the home of its role.
     """
 
     if not auth_enabled():
@@ -46,7 +47,7 @@ def login():
             return redirect(url_for("main.index", next=next_page, _anchor="login"))
 
         flash("You have successfully logged in.", "success")
-        return redirect(next_page or url_for("dashboard.index"))
+        return redirect(next_page or home_url_for(user))
 
     # The login form lives on the home page; keep ``next`` so it is not lost.
     return redirect(url_for("main.index", next=next_page, _anchor="login"))

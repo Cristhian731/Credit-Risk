@@ -43,13 +43,15 @@ def ensure_demo_user(password=None):
     """
     user = get_demo_user()
     if user is not None:
+        # The demo account is public: it never keeps another role.
+        user.role = "applicant"
         if password:
             user.set_password(password)
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                raise
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
         return user, False
     user = User(username=DEMO_USERNAME, email=DEMO_EMAIL)
     user.set_password(password or secrets.token_urlsafe(32))

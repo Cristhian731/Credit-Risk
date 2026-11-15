@@ -15,18 +15,6 @@
     ('how-it-works', 'How It Works'),
     ('technologies', 'Technologies'),
   ] %}
-  {% set app_links = [
-    ('transactions.index', 'Transactions'),
-    ('dashboard.index', 'Dashboard'),
-  ] %}
-  {# Same names and order as ml.schemas.MODEL_NAMES / DISPLAY_NAMES, then the comparison tab (checked by the route tests).
-     History is not in the menu: it is linked from the credit pages. #}
-  {% set model_links = [
-    ('logistic_regression', 'Logistic Regression'),
-    ('random_forest', 'Random Forest'),
-    ('xgboost', 'XGBoost'),
-    ('comparison', 'Model Comparison'),
-  ] %}
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top site-navbar">
     <div class="container">
       <a class="navbar-brand fw-semibold" href="{{ url_for('main.index') }}">Credit Risk</a>
@@ -45,6 +33,12 @@
               </li>
             {% endfor %}
           {% endif %}
+          {# Public menu: the same before and after the login. The private menu is the sidebar below. #}
+          {% for endpoint, label in public_menu %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == endpoint %}active{% endif %}" href="{{ url_for(endpoint) }}">{{ label }}</a>
+            </li>
+            {% if endpoint == 'main.index' %}
           {# Methodology: public pages, visible with and without a session. #}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle {% if request.blueprint == 'methodology' %}active{% endif %}" href="#" id="methodology-menu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Methodology</a>
@@ -56,29 +50,11 @@
               {% endfor %}
             </ul>
           </li>
-          {# Demo mode (AUTH_ENABLED False) also keeps the app links visible. #}
-          {% if current_user %}
-            {% for endpoint, label in app_links %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.blueprint == endpoint.split('.')[0] %}active{% endif %}"
-                   href="{{ url_for(endpoint) }}">{{ label }}</a>
-              </li>
-            {% endfor %}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle {% if request.blueprint == 'credit' %}active{% endif %}" href="#" id="credit-menu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Credit Evaluation</a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="credit-menu">
-                <li><a class="dropdown-item" href="{{ url_for('credit.index') }}">New evaluation (official model)</a></li>
-                <li><hr class="dropdown-divider"></li>
-                {# Each item opens its tab of /credit/models/ (the tab id is the URL fragment). #}
-                {% for name, label in model_links %}
-                  <li><a class="dropdown-item" href="{{ url_for('credit.models') }}#{{ name }}">{{ label }}</a></li>
-                {% endfor %}
-              </ul>
-            </li>
-          {% endif %}
+            {% endif %}
+          {% endfor %}
           {% if logged_in %}
             <li class="nav-item ms-lg-2">
-              <span class="navbar-text text-white">{{ current_user.username }}</span>
+              <span class="navbar-text text-white">{{ current_user.username }} <span class="badge text-bg-light" data-testid="role-badge">{{ current_user.role }}</span></span>
             </li>
             <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
               <form method="post" action="{{ url_for('auth.logout') }}">
@@ -101,7 +77,21 @@
     </div>
   </nav>
 
-  <main class="flex-grow-1">
+  {# Private area: sidebar with the pages of the role (demo mode shows it too, as an applicant). #}
+  <div class="app-shell flex-grow-1 {% if current_user %}d-lg-flex{% endif %}">
+  {% if current_user %}
+    <nav class="app-sidebar" aria-label="Private menu" data-testid="sidebar">
+      <p class="app-sidebar-title text-uppercase small fw-semibold mb-2">{{ current_user.role }}</p>
+      <ul class="nav flex-lg-column flex-row flex-wrap gap-1">
+        {% for endpoint, label in private_menu %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == endpoint %}active{% endif %}" href="{{ url_for(endpoint) }}">{{ label }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  {% endif %}
+  <main class="flex-grow-1 {% if current_user %}app-main{% endif %}">
     <div class="container mt-3">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
@@ -114,6 +104,7 @@
     </div>
     {% block content %}{% endblock %}
   </main>
+  </div>
 
   <footer class="py-4 text-center site-footer">
     <p class="mb-1 fw-semibold">University Project</p>

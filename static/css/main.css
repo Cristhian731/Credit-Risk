@@ -1,9 +1,42 @@
-/* Project colors on top of Bootstrap 5. */
+/* Credit Risk: visual identity on top of Bootstrap 5.
+   Palette: deep blue (primary), teal (accent), neutral grays. Red, amber and green are used
+   only for risk labels and statuses. One sans-serif family for the whole interface. */
 :root {
   --cr-navy: #0b2545;
   --cr-blue: #13518a;
+  --cr-teal: #0f8b8d;
+  --cr-teal-dark: #0b6e70;
   --cr-soft: #f3f6fa;
+  --cr-border: #dde3ea;
+  --cr-text: #1d2733;
   --cr-footer-text: #cfd8e3;
+
+  --bs-primary: var(--cr-blue);
+  --bs-primary-rgb: 19, 81, 138;
+  --bs-link-color: var(--cr-blue);
+  --bs-link-hover-color: var(--cr-navy);
+  --bs-body-color: var(--cr-text);
+  --bs-body-font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --bs-border-radius: 0.5rem;
+}
+
+body {
+  background: #fff;
+  font-family: var(--bs-body-font-family);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--cr-navy);
+  letter-spacing: -0.01em;
+}
+
+.hero h1, .hero h2, .hero h3, .hero h4, .hero h5, .hero h6 {
+  color: #fff;
+}
+
+/* The login card sits inside the hero, so its headings stay dark. */
+.hero .card h1, .hero .card h2, .hero .card h3, .hero .card h4, .hero .card h5 {
+  color: var(--cr-navy);
 }
 
 html {
@@ -16,23 +49,85 @@ section[id],
   scroll-margin-top: 72px;
 }
 
-.site-navbar {
-  background: var(--cr-navy);
+/* Buttons */
+.btn-primary {
+  --bs-btn-bg: var(--cr-blue);
+  --bs-btn-border-color: var(--cr-blue);
+  --bs-btn-hover-bg: var(--cr-navy);
+  --bs-btn-hover-border-color: var(--cr-navy);
+  --bs-btn-active-bg: var(--cr-navy);
+  --bs-btn-active-border-color: var(--cr-navy);
 }
 
+.btn-outline-primary {
+  --bs-btn-color: var(--cr-blue);
+  --bs-btn-border-color: var(--cr-blue);
+  --bs-btn-hover-bg: var(--cr-blue);
+  --bs-btn-hover-border-color: var(--cr-blue);
+}
+
+.btn-warning {
+  --bs-btn-bg: var(--cr-teal);
+  --bs-btn-border-color: var(--cr-teal);
+  --bs-btn-color: #fff;
+  --bs-btn-hover-bg: var(--cr-teal-dark);
+  --bs-btn-hover-border-color: var(--cr-teal-dark);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--cr-teal-dark);
+  --bs-btn-active-color: #fff;
+}
+
+a:focus-visible, .btn:focus-visible, .form-control:focus, .form-select:focus, .form-check-input:focus {
+  outline: 3px solid rgba(15, 139, 141, 0.55);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Top bar */
+.site-navbar {
+  background: var(--cr-navy);
+  border-bottom: 3px solid var(--cr-teal);
+}
+
+.site-navbar .navbar-brand {
+  letter-spacing: 0.02em;
+}
+
+.site-navbar .nav-link.active {
+  color: #fff;
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--cr-teal);
+}
+
+/* Hero of the public home page */
 .hero {
-  background: linear-gradient(135deg, var(--cr-navy), var(--cr-blue));
+  background: linear-gradient(135deg, var(--cr-navy), var(--cr-blue) 70%, var(--cr-teal-dark));
   color: #fff;
   padding: 80px 0;
 }
 
+/* Cards */
 .card {
-  border: 0;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--cr-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 10px rgba(11, 37, 69, 0.06);
 }
 
 .bg-soft {
   background: var(--cr-soft);
+}
+
+/* Tables: the same look everywhere */
+.table > thead th {
+  color: var(--cr-navy);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid var(--cr-border);
+}
+
+.table td.text-end, .table td .badge {
+  font-variant-numeric: tabular-nums;
 }
 
 .site-footer {
@@ -50,4 +145,60 @@ section[id],
 .apa-reference {
   padding-left: 2rem;
   text-indent: -2rem;
+}
+
+/* Private area: sidebar with the pages of the role */
+.app-shell {
+  background: var(--cr-soft);
+}
+
+.app-sidebar {
+  background: #fff;
+  border-bottom: 1px solid var(--cr-border);
+  padding: 12px 16px;
+}
+
+.app-sidebar-title {
+  color: var(--cr-teal-dark);
+  letter-spacing: 0.08em;
+}
+
+.app-sidebar .nav-link {
+  color: var(--cr-navy);
+  border-radius: 0.5rem;
+  border-left: 3px solid transparent;
+}
+
+.app-sidebar .nav-link:hover {
+  background: var(--cr-soft);
+}
+
+.app-sidebar .nav-link.active {
+  background: var(--cr-soft);
+  color: var(--cr-blue);
+  font-weight: 600;
+  border-left-color: var(--cr-teal);
+}
+
+.app-main {
+  background: var(--cr-soft);
+}
+
+.app-main > section,
+.app-main > .container {
+  max-width: 1200px;
+}
+
+@media (min-width: 992px) {
+  .app-sidebar {
+    flex: 0 0 230px;
+    border-bottom: 0;
+    border-right: 1px solid var(--cr-border);
+    padding: 24px 16px;
+    min-height: calc(100vh - 56px);
+  }
+  .app-main {
+    min-width: 0;
+    padding-top: 8px;
+  }
 }

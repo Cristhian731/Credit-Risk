@@ -244,8 +244,8 @@ def test_the_log_label_and_probability_match_the_saved_evaluation(client, demo_u
     assert record["model_version"] == saved["model_version"]
 
 
-def test_predictions_of_a_model_tab_are_logged_too(client, demo_user, logged):
-    client.post("/credit/models/xgboost/predict", data={k: v for k, v in FORM.items() if not k.startswith("client_")})
+def test_predictions_of_a_model_tab_are_logged_too(app, analyst_client, logged):
+    analyst_client.post("/credit/models/xgboost/predict", data={k: v for k, v in FORM.items() if not k.startswith("client_")})
     (record,) = _lines(logged)
     assert record["model"] == "xgboost" and record["model_version"].startswith("xgb@")
 

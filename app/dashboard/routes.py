@@ -1,13 +1,13 @@
 """Dashboard route: financial summary calculated by the database on every read."""
 from flask import render_template
 
-from ..auth.services import get_current_user, login_required
+from ..auth.services import get_current_user, roles_required
 from ..services.repository import count_credit_applications, transaction_totals
 from . import bp
 
 
 @bp.route("/")
-@login_required
+@roles_required("applicant")
 def index():
     """Show the income, expense and balance summary and the number of evaluations."""
     user = get_current_user()

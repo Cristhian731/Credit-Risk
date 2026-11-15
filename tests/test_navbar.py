@@ -9,13 +9,13 @@ EMAIL = "ana@example.com"
 PASSWORD = "correct-horse-battery"
 
 PUBLIC_LABELS = ("The Problem", "Objective", "How It Works", "Technologies")
-APP_LABELS = ("Transactions", "Dashboard", "Credit Evaluation")
+APP_LABELS = ("My finances", "Dashboard", "New request", "My requests")
 
 
 def navbar(response):
-    """Return the text of the <nav> element of a response."""
+    """Return the text of the <nav> elements (top bar and sidebar) of a response."""
     html = response.get_data(as_text=True)
-    return re.search(r"<nav.*?</nav>", html, re.DOTALL).group(0)
+    return "".join(re.findall(r"<nav.*?</nav>", html, re.DOTALL))
 
 
 @pytest.fixture
@@ -69,10 +69,8 @@ def test_navbar_escapes_user_name(app, client, auth_on):
 
 # c) Home redirect
 
-def test_home_redirects_to_dashboard_with_session(logged_in_client):
-    response = logged_in_client.get("/")
-    assert response.status_code == 302
-    assert response.headers["Location"] == "/dashboard/"
+def test_home_is_public_with_session(logged_in_client):
+    assert logged_in_client.get("/").status_code == 200
 
 
 def test_home_is_public_without_session(client, auth_on):
