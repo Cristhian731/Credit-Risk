@@ -1,0 +1,73 @@
+{# Project documentation (PGC) shown on the home page. Basic version; Activity 3 completes it. #}
+<section class="py-5 bg-soft" id="pgc">
+  <div class="container" style="max-width: 960px">
+    <h2 class="text-center fw-bold mb-1">Project Documentation</h2>
+    <p class="text-center text-muted mb-4">Project management plan (PGC) of the platform.</p>
+
+    <article class="mb-4" id="pgc-title">
+      <h3 class="h5 fw-bold">Project title</h3>
+      <p class="mb-0">Credit Risk and Loan Viability Prediction Platform: a machine learning web system for lending decision support.</p>
+    </article>
+
+    <article class="mb-4" id="pgc-problem">
+      <h3 class="h5 fw-bold">Problem statement and justification</h3>
+      <p>Credit risk is one of the main sources of vulnerability of banks. The Basel Committee on Banking Supervision (2017) requires capital in proportion to the credit exposure, because wrong lending decisions produce non-performing loans and provisioning costs. Traditional scorecards and manual reviews capture non-linear relations among the attributes of a borrower less well than machine learning classifiers (Lessmann et al., 2015; Dastile et al., 2020).</p>
+      <p class="mb-0">Approving a loan that will not be repaid increases the default rate; rejecting one that would have been repaid excludes a customer and loses revenue. Manual evaluation is also slow and differs between analysts. A system is needed that estimates the risk quickly and consistently, explains its limits, and leaves the final decision with a person who gives a reason (Bussmann et al., 2021).</p>
+    </article>
+
+    <article class="mb-4" id="pgc-objectives">
+      <h3 class="h5 fw-bold">General objective</h3>
+      <p>Develop a web platform that estimates the viability of a loan from the financial information of an applicant, using machine learning, to support the credit decision of an analyst.</p>
+      <h3 class="h5 fw-bold">Specific objectives</h3>
+      <ol class="mb-0">
+        <li>Document the requirements and the business process of a credit request.</li>
+        <li>Build a clean, validated dataset with exploratory analysis and feature engineering.</li>
+        <li>Train and compare logistic regression, random forest and XGBoost, and select a champion with documented criteria.</li>
+        <li>Implement, test and deploy the web system with roles, request flow, inference log and monitoring.</li>
+      </ol>
+    </article>
+
+    <article class="mb-4" id="pgc-framework">
+      <h3 class="h5 fw-bold">Reference framework</h3>
+      <p>Lessmann et al. (2015) compared 41 classifiers and found that ensembles outperform individual classifiers and logistic regression. Dastile et al. (2020) reviewed credit scoring models and noted the lack of interpretability of the most complex ones. Gunnarsson et al. (2021) showed that deep networks bring little gain over tuned gradient boosting on tabular credit data. Chen and Guestrin (2016) introduced XGBoost. Bussmann et al. (2021) showed that explainable techniques make credit models understandable for risk managers.</p>
+      <p class="mb-0">The project therefore compares a simple baseline with two ensembles, publishes the results of each one in read-only pages, and keeps a human analyst in the decision.</p>
+    </article>
+
+    <article class="mb-4" id="pgc-methodology">
+      <h3 class="h5 fw-bold">Methodology and development schedule</h3>
+      <p>The machine learning work follows CRISP-ML(Q) in six phases; the system is built in iterations (Scrum) with one branch and one reviewed pull request per block.</p>
+      <ol>
+        {% for number, phase_title in methodology_phases %}
+          <li><a href="{{ url_for('methodology.phase', number=number) }}">{{ phase_title }}</a></li>
+        {% endfor %}
+      </ol>
+      <div class="table-responsive">
+        <table class="table table-sm bg-white" data-testid="schedule">
+          <thead><tr><th>Activity</th><th>Responsible</th><th>Planned</th><th>Actual</th><th>Deliverable</th></tr></thead>
+          <tbody>
+            <tr><td>Data, models and CRISP-ML(Q) phases</td><td>Team</td><td>Activity 1</td><td>Delivered</td><td>Models, metrics, methodology pages, technical report</td></tr>
+            <tr><td>Design, roles and menus</td><td>Cristhian Aza</td><td>14 Nov 2026</td><td>Done</td><td>System design, role-based access, tests by role</td></tr>
+            <tr><td>Request flow, indicators and monitoring</td><td>Cristhian Aza</td><td>15 Nov 2026</td><td>Done</td><td>Statuses, analyst review, inference log, indicators</td></tr>
+            <tr><td>Database description</td><td>Harrison Camargo</td><td>15 Nov 2026</td><td>Done</td><td>Database document</td></tr>
+            <tr><td>User manual and role tests</td><td>Alejandro Alarcon</td><td>15 Nov 2026</td><td>Manual done; role report generated from the tests</td><td>User manual, role test report</td></tr>
+            <tr><td>Final documentation, report and video</td><td>Team</td><td>Activity 3</td><td>Pending</td><td>Consolidated report, 20-minute video</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="mb-4" id="pgc-references">
+      <h3 class="h5 fw-bold">Bibliographic references</h3>
+      <p class="apa-reference">Basel Committee on Banking Supervision. (2017). <em>Basel III: Finalising post-crisis reforms</em>. Bank for International Settlements. <a href="https://www.bis.org/bcbs/publ/d424.htm">https://www.bis.org/bcbs/publ/d424.htm</a></p>
+      <p class="apa-reference">Bussmann, N., Giudici, P., Marinelli, D., &amp; Papenbrock, J. (2021). Explainable machine learning in credit risk management. <em>Computational Economics, 57</em>(1), 203–216. <a href="https://doi.org/10.1007/s10614-020-10042-0">https://doi.org/10.1007/s10614-020-10042-0</a></p>
+      <p class="apa-reference">Chen, T., &amp; Guestrin, C. (2016). XGBoost: A scalable tree boosting system. In <em>Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</em> (pp. 785–794). ACM. <a href="https://doi.org/10.1145/2939672.2939785">https://doi.org/10.1145/2939672.2939785</a></p>
+      <p class="apa-reference">Dastile, X., Celik, T., &amp; Potsane, M. (2020). Statistical and machine learning models in credit scoring: A systematic literature survey. <em>Applied Soft Computing, 91</em>, Article 106263. <a href="https://doi.org/10.1016/j.asoc.2020.106263">https://doi.org/10.1016/j.asoc.2020.106263</a></p>
+      <p class="apa-reference">Gunnarsson, B. R., vanden Broucke, S., Baesens, B., Óskarsdóttir, M., &amp; Lemahieu, W. (2021). Deep learning for credit scoring: Do or don't? <em>European Journal of Operational Research, 295</em>(1), 292–305. <a href="https://doi.org/10.1016/j.ejor.2021.03.006">https://doi.org/10.1016/j.ejor.2021.03.006</a></p>
+      <p class="apa-reference mb-0">Lessmann, S., Baesens, B., Seow, H.-V., &amp; Thomas, L. C. (2015). Benchmarking state-of-the-art classification algorithms for credit scoring: An update of research. <em>European Journal of Operational Research, 247</em>(1), 124–136. <a href="https://doi.org/10.1016/j.ejor.2015.05.030">https://doi.org/10.1016/j.ejor.2015.05.030</a></p>
+    </article>
+
+    <p class="text-center mb-0">
+      <a class="btn btn-outline-primary" href="{{ url_for('main.resources') }}">Report, repository, manuals and video</a>
+    </p>
+  </div>
+</section>
