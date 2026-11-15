@@ -1,6 +1,6 @@
 # Database
 
-Description of `app/models.py` written by Harrison Camargo, in the order of the file.
+Description of `app/models.py`, in the order of the file. Sections 1 to 9 describe the tables of the first version; the section "Tables added for roles and the request flow" describes what was added later.
 
 ## Tables
 
@@ -19,7 +19,7 @@ These are three helpers used across several tables. The first returns the curren
 
 ### 4. Users table
 
-This is the main table. It stores the username and the email, and neither can be repeated. It also stores the encoded password and the date the person registered. This table connects to all the others: one user can have many categories, transactions, budgets, clients and credit applications, and each of those records belongs to a single user. It also has two functions: one to store the password securely at registration and another to check whether the password typed at login is correct.
+This is the main table. It stores the username and the email, and neither can be repeated. It also stores the encoded password, the role (applicant, analyst or admin; every new account is an applicant) and the date the person registered. This table connects to all the others: one user can have many categories, transactions, budgets, clients and credit applications, and each of those records belongs to a single user. It also has two functions: one to store the password securely at registration and another to check whether the password typed at login is correct.
 
 ### 5. Categories table
 
@@ -35,7 +35,7 @@ It represents a spending limit: the maximum amount of money the user wants to sp
 
 ### 8. Clients table
 
-Here the user registers the people whose credit they are going to evaluate. It stores the full name, the document number and the registration date. The same user cannot save two clients with the same document number, but two different users could each have a client with that number. One client can have several credit applications.
+This table holds the customer of each request. For an applicant it is created automatically with the first request and reused afterwards. It stores the full name, the document number and the registration date. The same user cannot save two clients with the same document number, but two different users could each have a client with that number. One client can have several credit applications.
 
 ### 9. Credit applications table
 
@@ -45,3 +45,48 @@ This is the credit risk part of the page. Each row is one evaluation and include
 - **Model result:** the risk level (Approved, Medium Risk or High Risk), the risk percentage (from 0 to 100) and the version of the model that made the calculation, which is useful for knowing which model produced each result if it is retrained later.
 
 The second image completes the table: it links it to the client being evaluated and to the user who ran the evaluation, stores the date, and checks that employment status, payment history and risk level are values from the allowed lists.
+
+
+## Tables added for roles and the request flow
+
+- **Role of the user.** The users table has a `role` column with three allowed values: applicant, analyst and admin. The registration always stores applicant. Only an administrator changes a role.
+- **Status and outcome of a credit application.** Each row of the credit applications table has a `status` (Pending, Documents requested, Approved, Rejected or Withdrawn) and an `outcome` (Repaid or Defaulted) with its date. The outcome stays empty until the real result of an approved loan is known. Totals and rates are never stored: they are calculated when a page is read.
+- **Reviews table.** One row per decision of an analyst on a request: the request, the analyst, the decision (Approved, Rejected or Documents requested), the written justification, whether the decision followed the model (empty when the model gave no clear recommendation), whether the review was mandatory and the date. A request can have several reviews because an analyst can ask for documents first.
+- **Inference logs table.** One row per call to a model: date, user, model, model version, result, risk percentage, response time in milliseconds and the error text when it failed. It holds no password and no document number.
+
+## Relationships
+
+- One user has many categories, transactions, budgets, clients and credit applications (one-to-many); each of those rows belongs to one user.
+- One category has many transactions and many budgets.
+- One client has many credit applications.
+- One credit application has many reviews; each review belongs to one analyst (a user).
+- One user can have many inference log rows; the user of a row stays empty if the call was made without a session.
+
+```mermaid
+erDiagram
+    USERS ||--o{ CATEGORIES : owns
+    USERS ||--o{ TRANSACTIONS : records
+    USERS ||--o{ BUDGETS : sets
+    USERS ||--o{ CLIENTS : has
+    USERS ||--o{ CREDIT_APPLICATIONS : requests
+    CATEGORIES ||--o{ TRANSACTIONS : groups
+    CATEGORIES ||--o{ BUDGETS : limits
+    CLIENTS ||--o{ CREDIT_APPLICATIONS : is_evaluated_in
+    CREDIT_APPLICATIONS ||--o{ REVIEWS : receives
+    USERS ||--o{ REVIEWS : decides
+    USERS ||--o{ INFERENCE_LOGS : triggers
+```
+
+## How to install the database
+
+1. Create and activate the virtual environment of the repository, then run `pip install -r requirements.txt`.
+2. Set `SECRET_KEY` in the environment. Without `DATABASE_URL` the application uses the local SQLite file `instance/credit_risk.db`; with `DATABASE_URL` it uses PostgreSQL.
+3. Create the tables with `flask --app run db upgrade`. The tables are created only by migrations, never when the application starts.
+4. Create the first administrator with `flask --app run create-user --role admin`; the password is read from an environment variable and is never stored in the repository.
+
+## How to run the migrations
+
+- Apply all migrations: `flask --app run db upgrade`.
+- Revert the last one: `flask --app run db downgrade`.
+- Create a new one after changing `app/models.py`: `flask --app run db migrate -m "message"`, then review the file in `migrations/versions/`.
+- Before a migration on a database with data, copy `instance/credit_risk.db` to `instance/backups/` with the date in the name. The migrations of this project are `0001` (initial schema), `0002` (unique category per user and type), `0003` (user roles) and `0004` (request flow, reviews and inference log); each one has a downgrade.
