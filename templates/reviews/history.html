@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import pager %}
+{% from "_status.html" import status_badge, risk_badge %}
+{% block title %}Decisions history | Credit Risk{% endblock %}
+{% block content %}
+<section class="py-4 px-3">
+  <h1 class="h3 fw-bold mb-3">Decisions history</h1>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle" data-testid="history-table">
+      <thead><tr><th>Id</th><th>Decided (UTC)</th><th>Customer</th><th>Model result</th><th>Status</th><th>Followed model</th><th>Analyst</th><th>Outcome</th><th></th></tr></thead>
+      <tbody>
+        {% for a in applications %}
+        {% set r = a.review %}
+        <tr>
+          <td>{{ a.id }}</td>
+          <td>{{ r.decided_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ a.client_full_name }}</td>
+          <td>{{ risk_badge(a.risk_label) }} {{ a.risk_percent }}%</td>
+          <td>{{ status_badge(a.status) }}</td>
+          <td>{% if r.followed_model is none %}No clear recommendation{% elif r.followed_model %}Yes{% else %}No{% endif %}</td>
+          <td>{{ r.analyst }}</td>
+          <td>{{ a.outcome or ('Pending' if a.status == 'Approved' else '-') }}</td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('reviews.detail', application_id=a.id) }}">Open</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-muted">No decisions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pager(pagination, 'reviews.history') }}
+</section>
+{% endblock %}

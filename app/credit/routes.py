@@ -2,24 +2,39 @@
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 
 from ..auth.services import get_current_user, roles_required
+from ..services import rules
 from ..services.repository import (
     delete_credit_application,
     finance_summary_for_credit,
     get_credit_application,
     paginate_credit_applications,
     save_credit_application,
+    update_credit_application,
+    user_client,
+    withdraw_credit_application,
 )
 from . import bp
 from .forms import CHOICE_FIELDS, FIELD_ORDER, NUMERIC_FIELDS, to_record, validate_client, validate_form
 from ml.schemas import CHAMPION_AUC_MARGIN, DISPLAY_NAMES, MODEL_NAMES, parse_model_version_tag
 
-from .services import RECOMMENDATIONS, get_registry
+from .services import RECOMMENDATIONS, get_registry, scored_prediction
 
 
-def _render_form(form, status=200):
+def _with_client(form):
+    """The form values with the name and document of the applicant prefilled (first request: empty)."""
+    values = dict(form)
+    client = user_client(get_current_user().id)
+    if client:
+        values.setdefault("client_full_name", client["full_name"])
+        values.setdefault("client_document", client["document"])
+    return values
+
+
+def _render_form(form, status=200, edit_id=None):
     return render_template(
         "credit/index.html",
-        form=form,
+        form=_with_client(form),
+        edit_id=edit_id,
         field_order=FIELD_ORDER,
         numeric_fields=NUMERIC_FIELDS,
         choice_fields=CHOICE_FIELDS,
@@ -64,7 +79,7 @@ def _render_finance_form():
         form["dti_ratio"] = f"{summary['dti_percent']:.1f}"
     return render_template(
         "credit/index.html",
-        form=form,
+        form=_with_client(form),
         finance=summary,
         origin=_finance_origin(summary),
         field_order=FIELD_ORDER,
@@ -95,7 +110,7 @@ def index():
         return _render_form(request.form, 400)
 
     try:
-        result = get_registry().predict(values)
+        result = scored_prediction(values, get_current_user().id)
     except RuntimeError as exc:
         flash(str(exc), "danger")
         return _render_form(request.form, 503)
@@ -110,7 +125,63 @@ def index():
         "user_id": get_current_user().id,
     })
     # Post/Redirect/Get: reloading the result page never submits the form again.
+    flash("Your request was sent. An analyst will review it.", "success")
     return redirect(url_for("credit.result", application_id=saved["id"]))
+
+
+@bp.route("/requests/<int:application_id>/edit", methods=["GET", "POST"])
+@roles_required("applicant")
+def edit(application_id):
+    """Edit a request in Pending or Documents requested. It is scored again and goes back to Pending."""
+    user = get_current_user()
+    application = get_credit_application(user.id, application_id)
+    if application is None:
+        abort(404)
+    if not rules.can_applicant_edit(application["status"]):
+        flash("Only requests in Pending or Documents requested can be edited.", "danger")
+        return redirect(url_for("credit.result", application_id=application_id))
+    if request.method == "GET":
+        form = {name: str(application[name]) for name in FIELD_ORDER}
+        form["client_full_name"] = application["client_full_name"]
+        form["client_document"] = application["client_document"]
+        return _render_form(form, edit_id=application_id)
+
+    client, client_errors = validate_client(request.form)
+    values, errors = validate_form(request.form)
+    errors = client_errors + errors
+    if errors:
+        for message in errors:
+            flash(message, "danger")
+        return _render_form(request.form, 400, edit_id=application_id)
+    try:
+        result = scored_prediction(values, user.id)
+    except RuntimeError as exc:
+        flash(str(exc), "danger")
+        return _render_form(request.form, 503, edit_id=application_id)
+    update_credit_application(user.id, application_id, {
+        **to_record(values),
+        **client,
+        "risk_label": result["label"],
+        "risk_percent": result["risk_percent"],
+        "model_version": result.get("model_version"),
+    })
+    flash("Your request was updated and sent again to an analyst.", "success")
+    return redirect(url_for("credit.result", application_id=application_id))
+
+
+@bp.route("/requests/<int:application_id>/withdraw", methods=["POST"])
+@roles_required("applicant")
+def withdraw(application_id):
+    """The applicant withdraws a request in Pending or Documents requested."""
+    try:
+        found = withdraw_credit_application(get_current_user().id, application_id)
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("credit.result", application_id=application_id))
+    if not found:
+        abort(404)
+    flash("Request withdrawn.", "success")
+    return redirect(url_for("credit.history"))
 
 
 @bp.route("/history")
@@ -122,7 +193,7 @@ def history():
         request.args.get("page", 1, type=int),
         current_app.config["PAGE_SIZE"],
     )
-    return render_template("credit/history.html", applications=page["items"], pagination=page)
+    return render_template("credit/history.html", applications=page["items"], pagination=page, rules=rules)
 
 
 @bp.route("/history/<int:application_id>/delete", methods=["GET", "POST"])
@@ -136,6 +207,9 @@ def delete(application_id):
     application = get_credit_application(user_id, application_id)
     if application is None:
         abort(404)
+    if not rules.can_applicant_delete(application["status"]):
+        flash("A request that was decided cannot be deleted.", "danger")
+        return redirect(url_for("credit.history"))
     if request.method == "GET":
         return render_template(
             "confirm_delete.html",
@@ -180,7 +254,7 @@ def result(application_id):
         "risk_percent": application["risk_percent"],
         "recommendation": RECOMMENDATIONS[application["risk_label"]],
     }
-    return render_template("credit/result.html", result=result, application=application)
+    return render_template("credit/result.html", result=result, application=application, rules=rules)
 
 
 @bp.app_template_filter("model_label")
@@ -245,7 +319,7 @@ def model_predict(name):
             flash(message, "danger")
         return _render_models(name, request.form, status=400)
     try:
-        result = get_registry().predict(values, model=name)
+        result = scored_prediction(values, get_current_user().id, model=name)
     except RuntimeError as exc:
         flash(str(exc), "danger")
         return _render_models(name, request.form, status=503)

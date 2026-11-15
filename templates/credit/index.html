@@ -7,11 +7,11 @@
   <div class="card p-4">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
       <div>
-        <h2 class="fw-bold mb-1">Customer Information</h2>
-        <p class="text-muted mb-1">Complete all fields to evaluate the loan application.</p>
+        <h2 class="fw-bold mb-1">{{ 'Edit request #%d' % edit_id if edit_id else 'New credit request' }}</h2>
+        <p class="text-muted mb-1">{% if edit_id %}After you save, the request is scored again and goes back to the analyst queue.{% else %}Complete all fields. The system scores the request and an analyst reviews it before any decision.{% endif %}</p>
         <p class="text-muted small">All amounts are in US dollars (USD). Enter the <strong>monthly</strong> income, not the annual one.</p>
       </div>
-      <a href="{{ url_for('credit.history') }}" class="btn btn-outline-secondary">Evaluation history</a>
+      <a href="{{ url_for('credit.history') }}" class="btn btn-outline-secondary">My requests</a>
     </div>
 
     {% if finance %}
@@ -58,7 +58,7 @@
       </div>
     {% endif %}
 
-    <form method="post" action="{{ url_for('credit.index') }}" class="row g-3">
+    <form method="post" action="{{ url_for('credit.edit', application_id=edit_id) if edit_id else url_for('credit.index') }}" class="row g-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="col-md-6">
         <label for="client_full_name" class="form-label">Customer full name</label>
@@ -95,7 +95,7 @@
       {% endfor %}
 
       <div class="col-12 text-end">
-        <button type="submit" class="btn btn-primary btn-lg px-5">Evaluate Application</button>
+        <button type="submit" class="btn btn-primary btn-lg px-5">{{ 'Save changes' if edit_id else 'Send request' }}</button>
       </div>
     </form>
   </div>

@@ -149,8 +149,8 @@ def test_history_is_paginated_newest_first(app, ana):
     client = client_for(app, ana)
     first = client.get("/credit/history").get_data(as_text=True)
     second = client.get("/credit/history?page=2").get_data(as_text=True)
-    assert len(re.findall(r"<td>Client \d{3}</td>", first)) == 20
-    assert re.findall(r"<td>(Client \d{3})</td>", second) == [f"Client {n:03d}" for n in range(4, -1, -1)]
+    assert len(re.findall(r"<td>Client \d{3}<br>", first)) == 20
+    assert re.findall(r"<td>(Client \d{3})<br>", second) == [f"Client {n:03d}" for n in range(4, -1, -1)]
     assert "Page 2 of 2" in second
     assert client.get("/credit/history?page=abc").status_code == 200
 

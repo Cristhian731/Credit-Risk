@@ -344,6 +344,6 @@ def test_placeholder_pages_are_listed_so_the_closing_test_can_find_them(clients)
     from app.admin.routes import PLACEHOLDER_ENDPOINTS as admin_placeholders
     from app.reviews.routes import PLACEHOLDER_ENDPOINTS as review_placeholders
 
-    for path in ("/reviews/", "/admin/categories"):
+    for path in ("/reviews/indicators", "/admin/categories"):
         assert 'data-testid="placeholder"' in clients[ADMIN].get(path).get_data(as_text=True)
-    assert {"reviews.queue", "admin.categories"} <= admin_placeholders | review_placeholders
+    assert {"reviews.indicators", "admin.categories"} <= admin_placeholders | review_placeholders

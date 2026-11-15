@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% from "_pagination.html" import pager %}
+{% from "_status.html" import status_badge, risk_badge %}
 
-{% block title %}Evaluation history &middot; Credit Risk{% endblock %}
+{% block title %}My requests &middot; Credit Risk{% endblock %}
 
 {% block content %}
-{% set colors = {'Approved': 'success', 'Medium Risk': 'warning', 'High Risk': 'danger'} %}
 <div class="container py-4">
   <div class="card p-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-      <h2 class="fw-bold mb-0">Evaluation history</h2>
-      <a href="{{ url_for('credit.index') }}" class="btn btn-primary">New evaluation</a>
+      <h2 class="fw-bold mb-0">My requests</h2>
+      <a href="{{ url_for('credit.index') }}" class="btn btn-primary">New request</a>
     </div>
 
     <div class="table-responsive">
@@ -18,12 +18,11 @@
           <tr>
             <th>Date (UTC)</th>
             <th>Customer</th>
-            <th>Document</th>
             <th class="text-end">Loan amount</th>
             <th class="text-end">Term (months)</th>
             <th>Model</th>
-            <th>Result</th>
-            <th class="text-end">Risk</th>
+            <th>Risk</th>
+            <th>Status</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
@@ -31,20 +30,24 @@
           {% for a in applications %}
             <tr>
               <td>{{ a.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-              <td>{{ a.client_full_name }}</td>
-              <td>{{ a.client_document }}</td>
+              <td>{{ a.client_full_name }}<br><span class="text-muted small">{{ a.client_document }}</span></td>
               <td class="text-end">{{ "{:,.2f}".format(a.loan_amount) }}</td>
               <td class="text-end">{{ a.loan_term }}</td>
               <td>{{ a.model_version|model_label }}</td>
-              <td><span class="badge text-bg-{{ colors[a.risk_label] }}">{{ a.risk_label }}</span></td>
-              <td class="text-end">{{ a.risk_percent }}%</td>
+              <td>{{ risk_badge(a.risk_label) }} {{ a.risk_percent }}%</td>
+              <td>{{ status_badge(a.status) }}{% if a.outcome %}<br><span class="small text-muted">{{ a.outcome }}</span>{% endif %}</td>
               <td class="text-end text-nowrap">
                 <a href="{{ url_for('credit.result', application_id=a.id) }}" class="btn btn-sm btn-outline-primary">View</a>
-                <a href="{{ url_for('credit.delete', application_id=a.id) }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                {% if rules.can_applicant_edit(a.status) %}
+                  <a href="{{ url_for('credit.edit', application_id=a.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                {% endif %}
+                {% if rules.can_applicant_delete(a.status) %}
+                  <a href="{{ url_for('credit.delete', application_id=a.id) }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                {% endif %}
               </td>
             </tr>
           {% else %}
-            <tr><td colspan="9" class="text-muted">No evaluations yet.</td></tr>
+            <tr><td colspan="8" class="text-muted">No requests yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
