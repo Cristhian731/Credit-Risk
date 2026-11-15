@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "_indicator_tables.html" import request_tables, outcome_table %}
+{% block title %}Indicators | Credit Risk{% endblock %}
+{% block content %}
+<section class="py-4 px-3">
+  <h1 class="h3 fw-bold mb-1">Indicators</h1>
+  <p class="text-muted">Calculated every time this page is opened; nothing is stored.</p>
+  {{ request_tables(data) }}
+  <div class="mt-4">{{ outcome_table(comparison) }}</div>
+</section>
+{% endblock %}

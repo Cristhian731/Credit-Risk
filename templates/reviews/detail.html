@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_status.html" import status_badge, risk_badge %}
+{% block title %}Request {{ a.id }} | Credit Risk{% endblock %}
+{% block content %}
+<section class="py-4 px-3">
+  <p class="mb-1"><a href="{{ url_for('reviews.queue') }}">&larr; Review queue</a></p>
+  <h1 class="h3 fw-bold mb-3">Request {{ a.id }} {{ status_badge(a.status) }}</h1>
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card p-3 h-100">
+        <h2 class="h5 fw-bold">Applicant data</h2>
+        <dl class="row mb-0" data-testid="application-data">
+          <dt class="col-6">Customer</dt><dd class="col-6">{{ a.client_full_name }}</dd>
+          <dt class="col-6">Document</dt><dd class="col-6">{{ a.client_document }}</dd>
+          <dt class="col-6">Age</dt><dd class="col-6">{{ a.age }}</dd>
+          <dt class="col-6">Monthly income</dt><dd class="col-6">{{ "{:,.2f}".format(a.monthly_income) }}</dd>
+          <dt class="col-6">Employment</dt><dd class="col-6">{{ a.employment_status }} ({{ a.years_employment }} years)</dd>
+          <dt class="col-6">Credit score</dt><dd class="col-6">{{ a.credit_score }}</dd>
+          <dt class="col-6">Existing debt</dt><dd class="col-6">{{ "{:,.2f}".format(a.existing_debt) }}</dd>
+          <dt class="col-6">Debt-to-income</dt><dd class="col-6">{{ a.dti_ratio }}%</dd>
+          <dt class="col-6">Loan</dt><dd class="col-6">{{ "{:,.2f}".format(a.loan_amount) }} in {{ a.loan_term }} months</dd>
+          <dt class="col-6">Previous loans</dt><dd class="col-6">{{ a.previous_loans }}</dd>
+          <dt class="col-6">Payment history</dt><dd class="col-6">{{ a.payment_history }}</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card p-3 h-100">
+        <h2 class="h5 fw-bold">Model result</h2>
+        <p class="mb-1">{{ risk_badge(a.risk_label) }} estimated default risk <strong>{{ a.risk_percent }}%</strong></p>
+        <p class="text-muted small">Model: {{ a.model_version|model_label }}. The score supports the decision; it does not replace it. {% if a.mandatory_review %}<strong>Mandatory review:</strong> High Risk or applicant aged 18 to 24.{% endif %}</p>
+        {% if a.reviews %}
+          <h3 class="h6 fw-bold mt-2">Decisions so far</h3>
+          <ul class="list-unstyled small" data-testid="review-list">
+            {% for r in a.reviews %}
+            <li class="mb-2"><strong>{{ r.decision }}</strong> by {{ r.analyst }} on {{ r.decided_at.strftime('%Y-%m-%d %H:%M') }} UTC
+              ({% if r.followed_model is none %}no clear model recommendation{% elif r.followed_model %}followed the model{% else %}contradicted the model{% endif %})<br>{{ r.justification }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if a.outcome %}<p data-testid="outcome">Real outcome: <strong>{{ a.outcome }}</strong> ({{ a.outcome_at.strftime('%Y-%m-%d') }})</p>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if a.status == 'Pending' %}
+  <form method="post" action="{{ url_for('reviews.decide', application_id=a.id) }}" class="card p-3 mt-4" data-testid="decision-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2 class="h5 fw-bold">Decision</h2>
+    <div class="mb-3">
+      {% for value, text in decisions %}
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="decision" id="decision-{{ loop.index }}" value="{{ value }}" {% if form.get('decision') == value %}checked{% endif %} required>
+        <label class="form-check-label" for="decision-{{ loop.index }}">{{ text }}</label>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mb-3">
+      <label for="justification" class="form-label">Justification (required, at least 10 characters)</label>
+      <textarea class="form-control" id="justification" name="justification" rows="3" maxlength="1000" required>{{ form.get('justification', '') }}</textarea>
+    </div>
+    {% if rules.is_young(a.age) %}
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" name="human_review" id="human_review" {% if form.get('human_review') %}checked{% endif %}>
+      <label class="form-check-label" for="human_review">I confirm that a person reviewed this request (required to reject an applicant aged 18 to 24).</label>
+    </div>
+    {% endif %}
+    <div><button type="submit" class="btn btn-primary">Save decision</button></div>
+  </form>
+  {% elif rules.can_record_outcome(a.status, a.outcome) %}
+  <form method="post" action="{{ url_for('reviews.outcome', application_id=a.id) }}" class="card p-3 mt-4" data-testid="outcome-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2 class="h5 fw-bold">Real outcome</h2>
+    <p class="text-muted small">It is recorded once and feeds the monitoring of the model.</p>
+    <div class="d-flex gap-2">
+      <select name="outcome" class="form-select w-auto" aria-label="Real outcome" required>
+        <option value="" disabled selected>Select...</option>
+        {% for o in outcomes %}<option value="{{ o }}">{{ o }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary">Record outcome</button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

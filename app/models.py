@@ -22,6 +22,17 @@ EMPLOYMENT_STATUSES = ("employed", "self_employed", "retired", "unemployed")
 PAYMENT_HISTORIES = ("good", "fair", "poor")
 RISK_LABELS = ("Approved", "Medium Risk", "High Risk")
 
+# Life cycle of a credit request (see docs/SYSTEM_DESIGN.md). Approved, Rejected and Withdrawn are final.
+STATUS_PENDING = "Pending"
+STATUS_DOCUMENTS = "Documents requested"
+STATUS_APPROVED = "Approved"
+STATUS_REJECTED = "Rejected"
+STATUS_WITHDRAWN = "Withdrawn"
+STATUSES = (STATUS_PENDING, STATUS_DOCUMENTS, STATUS_APPROVED, STATUS_REJECTED, STATUS_WITHDRAWN)
+# The decisions of an analyst; each one sets the status with the same name.
+DECISIONS = (STATUS_APPROVED, STATUS_REJECTED, STATUS_DOCUMENTS)
+OUTCOMES = ("Repaid", "Defaulted")
+
 # Allowed values for User.role. The registration always creates an applicant; only an
 # administrator changes a role, and the first administrator is created from the command line.
 ROLES = ("applicant", "analyst", "admin")
@@ -176,6 +187,10 @@ class CreditApplication(db.Model):
             name="ck_credit_applications_payment_history",
         ),
         db.CheckConstraint(_in_check("risk_label", RISK_LABELS), name="ck_credit_applications_risk_label"),
+        db.CheckConstraint(_in_check("status", STATUSES), name="ck_credit_applications_status"),
+        db.CheckConstraint(
+            "outcome IS NULL OR outcome IN ('Repaid', 'Defaulted')", name="ck_credit_applications_outcome"
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -198,12 +213,28 @@ class CreditApplication(db.Model):
     risk_percent = db.Column(db.Float, nullable=False)  # 0-100
     model_version = db.Column(db.String(30), nullable=True)
 
+    # Request flow. The real outcome is recorded once, only for Approved requests.
+    status = db.Column(db.String(25), nullable=False, default=STATUS_PENDING, server_default=STATUS_PENDING)
+    outcome = db.Column(db.String(10), nullable=True)
+    outcome_at = db.Column(db.DateTime, nullable=True)
+
     client_id = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
     client = db.relationship("Client", back_populates="credit_applications")
     user = db.relationship("User", back_populates="credit_applications")
+    reviews = db.relationship(
+        "Review", back_populates="application", order_by="Review.id", cascade="all, delete-orphan"
+    )
+
+    @validates("status")
+    def _validate_status(self, key, value):
+        return _require_choice(key, value, STATUSES)
+
+    @validates("outcome")
+    def _validate_outcome(self, key, value):
+        return value if value is None else _require_choice(key, value, OUTCOMES)
 
     @validates("employment_status")
     def _validate_employment_status(self, key, value):
@@ -216,3 +247,48 @@ class CreditApplication(db.Model):
     @validates("risk_label")
     def _validate_risk_label(self, key, value):
         return _require_choice(key, value, RISK_LABELS)
+
+
+class Review(db.Model):
+    """The decision of an analyst on a credit request, always with a justification."""
+
+    __tablename__ = "reviews"
+    __table_args__ = (db.CheckConstraint(_in_check("decision", DECISIONS), name="ck_reviews_decision"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    application_id = db.Column(db.Integer, db.ForeignKey("credit_applications.id"), nullable=False, index=True)
+    analyst_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    decision = db.Column(db.String(25), nullable=False)
+    justification = db.Column(db.Text, nullable=False)
+    # True/False when the model gave a clear recommendation; None when it did not (BR7).
+    followed_model = db.Column(db.Boolean, nullable=True)
+    mandatory = db.Column(db.Boolean, nullable=False, default=False)
+    decided_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
+    application = db.relationship("CreditApplication", back_populates="reviews")
+    analyst = db.relationship("User")
+
+    @validates("decision")
+    def _validate_decision(self, key, value):
+        return _require_choice(key, value, DECISIONS)
+
+
+class InferenceLog(db.Model):
+    """One call to a model: who, when, which model and version, the result and the response time.
+
+    It holds no password and no document number (BR10).
+    """
+
+    __tablename__ = "inference_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    model = db.Column(db.String(30), nullable=False)
+    model_version = db.Column(db.String(30), nullable=True)
+    result = db.Column(db.String(20), nullable=True)
+    risk_percent = db.Column(db.Float, nullable=True)
+    response_ms = db.Column(db.Float, nullable=False)
+    error = db.Column(db.String(255), nullable=True)
+
+    user = db.relationship("User")

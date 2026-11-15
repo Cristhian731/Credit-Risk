@@ -1,0 +1,9 @@
+{# Badge of the status of a credit request. #}
+{% macro status_badge(status) -%}
+  {% set colors = {'Pending': 'secondary', 'Documents requested': 'warning', 'Approved': 'success', 'Rejected': 'danger', 'Withdrawn': 'dark'} %}
+  <span class="badge text-bg-{{ colors[status] }}" data-testid="status">{{ status }}</span>
+{%- endmacro %}
+{% macro risk_badge(label) -%}
+  {% set colors = {'Approved': 'success', 'Medium Risk': 'warning', 'High Risk': 'danger'} %}
+  <span class="badge text-bg-{{ colors[label] }}">{{ label }}</span>
+{%- endmacro %}

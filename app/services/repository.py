@@ -28,16 +28,36 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from ..extensions import db
-from ..models import Category, Client, CreditApplication, Transaction
+from ..models import (
+    STATUS_PENDING,
+    STATUS_WITHDRAWN,
+    Category,
+    Client,
+    CreditApplication,
+    InferenceLog,
+    Review,
+    Transaction,
+    utcnow,
+)
+from . import rules
 
 # Columns of credit_applications that come straight from the evaluation form.
 _APPLICATION_FIELDS = (
     "age", "monthly_income", "employment_status", "years_employment", "credit_score",
     "existing_debt", "dti_ratio", "loan_amount", "loan_term", "previous_loans",
     "payment_history", "risk_label", "risk_percent", "model_version",
+)
+# Read-only columns of the request flow, returned with every application.
+_FLOW_FIELDS = ("status", "outcome", "outcome_at")
+
+
+# Eager loading of what _application_dict reads.
+_APPLICATION_LOAD = (
+    joinedload(CreditApplication.client),
+    selectinload(CreditApplication.reviews).joinedload(Review.analyst),
 )
 
 
@@ -99,8 +119,28 @@ def _transaction_dict(transaction):
     }
 
 
+def _review_dict(review):
+    return {
+        "id": review.id,
+        "application_id": review.application_id,
+        "analyst_id": review.analyst_id,
+        "analyst": review.analyst.username if review.analyst else "",
+        "decision": review.decision,
+        "justification": review.justification,
+        "followed_model": review.followed_model,
+        "mandatory": review.mandatory,
+        "decided_at": review.decided_at,
+    }
+
+
 def _application_dict(application):
-    record = {field: getattr(application, field) for field in _APPLICATION_FIELDS}
+    record = {field: getattr(application, field) for field in _APPLICATION_FIELDS + _FLOW_FIELDS}
+    reviews = [_review_dict(review) for review in application.reviews]
+    record.update(
+        reviews=reviews,
+        review=reviews[-1] if reviews else None,
+        mandatory_review=rules.is_mandatory_review(application.risk_label, application.age),
+    )
     record.update(
         id=application.id,
         client_id=application.client_id,
@@ -182,7 +222,7 @@ def list_credit_applications(user_id, limit=None):
     """Return the user's credit evaluations, newest first (at most ``limit``)."""
     query = (
         db.select(CreditApplication)
-        .options(joinedload(CreditApplication.client))
+        .options(*_APPLICATION_LOAD)
         .where(CreditApplication.user_id == user_id)
         .order_by(CreditApplication.id.desc())
     )
@@ -211,7 +251,7 @@ def _own_credit_application(user_id, application_id):
     """The evaluation if it exists and belongs to the user, otherwise None."""
     return db.session.execute(
         db.select(CreditApplication)
-        .options(joinedload(CreditApplication.client))
+        .options(*_APPLICATION_LOAD)
         .where(CreditApplication.id == application_id, CreditApplication.user_id == user_id)
     ).scalar_one_or_none()
 
@@ -331,7 +371,7 @@ def paginate_credit_applications(user_id, page, per_page):
     """One page of the user's evaluations, newest first. Same shape as ``paginate_transactions``."""
     return _paginate(
         db.select(CreditApplication)
-        .options(joinedload(CreditApplication.client))
+        .options(*_APPLICATION_LOAD)
         .where(CreditApplication.user_id == user_id)
         .order_by(CreditApplication.id.desc()),
         db.select(func.count(CreditApplication.id)).where(CreditApplication.user_id == user_id),
@@ -476,3 +516,153 @@ def finance_summary_for_credit(user_id, debt_category_ids=None, today=None):
         "expense_categories": categories,
         "selected_names": [item["name"] for item in categories if item["selected"]],
     }
+
+
+# --- Request flow (block D3) -------------------------------------------------------------------
+
+def _load_application(application_id):
+    """Any application by id (analyst side: no owner check)."""
+    return db.session.execute(
+        db.select(CreditApplication).options(*_APPLICATION_LOAD).where(CreditApplication.id == application_id)
+    ).scalar_one_or_none()
+
+
+def get_application_any(application_id):
+    """An application by id for an analyst or administrator, or None."""
+    application = _load_application(application_id)
+    return None if application is None else _application_dict(application)
+
+
+def user_client(user_id):
+    """The first client of the user (the applicant), or None before the first request."""
+    client = db.session.execute(
+        db.select(Client).where(Client.user_id == user_id).order_by(Client.id).limit(1)
+    ).scalar_one_or_none()
+    return None if client is None else {"full_name": client.full_name, "document": client.document_number}
+
+
+def update_credit_application(user_id, application_id, data):
+    """Edit an open request of the user; it is scored again, so it goes back to Pending.
+
+    Returns the record, or None if it is not the user's. Raises ValueError if it is not editable.
+    """
+    try:
+        application = _own_credit_application(user_id, application_id)
+        if application is None:
+            return None
+        if not rules.can_applicant_edit(application.status):
+            raise ValueError("Only requests in Pending or Documents requested can be edited.")
+        application.client = _client(user_id, data["client_full_name"], data["client_document"])
+        for field in _APPLICATION_FIELDS:
+            if field in data:
+                setattr(application, field, data[field])
+        application.status = STATUS_PENDING
+        db.session.commit()
+        return _application_dict(application)
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def withdraw_credit_application(user_id, application_id):
+    """The applicant withdraws an open request. False if it is not theirs; ValueError if it is closed."""
+    try:
+        application = _own_credit_application(user_id, application_id)
+        if application is None:
+            return False
+        if not rules.can_applicant_edit(application.status):
+            raise ValueError("Only requests in Pending or Documents requested can be withdrawn.")
+        application.status = STATUS_WITHDRAWN
+        db.session.commit()
+        return True
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def review_queue():
+    """Pending requests: mandatory review first, then the oldest first. Plain dicts."""
+    rows = db.session.execute(
+        db.select(CreditApplication)
+        .options(*_APPLICATION_LOAD)
+        .where(CreditApplication.status == STATUS_PENDING)
+        .order_by(CreditApplication.created_at, CreditApplication.id)
+    ).scalars()
+    items = [_application_dict(row) for row in rows]
+    items.sort(key=lambda item: 0 if item["mandatory_review"] else 1)  # stable: keeps the age order
+    return items
+
+
+def save_review(analyst_id, application_id, decision, justification):
+    """Record the decision of an analyst on a Pending request and move it to the new status.
+
+    ``justification`` has already been validated by ``rules.validate_decision``.
+    Raises LookupError if the request does not exist and ValueError if it is not Pending.
+    """
+    try:
+        application = _load_application(application_id)
+        if application is None:
+            raise LookupError("Request not found.")
+        if application.status != STATUS_PENDING:
+            raise ValueError("Only Pending requests can be decided.")
+        review = Review(
+            application=application,
+            analyst_id=analyst_id,
+            decision=decision,
+            justification=justification,
+            followed_model=rules.followed_model(application.risk_label, decision),
+            mandatory=rules.is_mandatory_review(application.risk_label, application.age),
+        )
+        application.status = decision
+        db.session.add(review)
+        db.session.commit()
+        return _application_dict(application)
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def record_outcome(application_id, outcome):
+    """Record the real outcome (Repaid or Defaulted) once, only for Approved requests (BR6)."""
+    try:
+        application = _load_application(application_id)
+        if application is None:
+            raise LookupError("Request not found.")
+        if not rules.can_record_outcome(application.status, application.outcome):
+            raise ValueError("The outcome can be recorded once, only for Approved requests.")
+        application.outcome = outcome
+        application.outcome_at = utcnow()
+        db.session.commit()
+        return _application_dict(application)
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def paginate_decided_applications(page, per_page):
+    """Decisions history: every request with at least one review, most recent decision first."""
+    has_review = db.exists().where(Review.application_id == CreditApplication.id)
+    last_review = (
+        db.select(func.max(Review.decided_at)).where(Review.application_id == CreditApplication.id).scalar_subquery()
+    )
+    return _paginate(
+        db.select(CreditApplication)
+        .options(*_APPLICATION_LOAD)
+        .where(has_review)
+        .order_by(last_review.desc(), CreditApplication.id.desc()),
+        db.select(func.count(CreditApplication.id)).where(has_review),
+        page, per_page, _application_dict,
+    )
+
+
+def log_inference(user_id, model, model_version, result, risk_percent, response_ms, error=None):
+    """Store one call to a model. It never raises: a failing log must not break a prediction."""
+    try:
+        db.session.add(InferenceLog(
+            user_id=user_id, model=model, model_version=model_version, result=result,
+            risk_percent=risk_percent, response_ms=round(float(response_ms), 2),
+            error=str(error)[:255] if error else None,
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
