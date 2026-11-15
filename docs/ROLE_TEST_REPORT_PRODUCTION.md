@@ -1,5 +1,7 @@
 # Role / Account Test Report
 
+> **Note.** This test was made on the published site with the previous version of the system, which had no roles: all three accounts are standard users. The personal e-mail addresses of the original document were replaced by Account A, B and C. The test of the access rules of the three current roles is in [ROLE_TEST_REPORT.md](ROLE_TEST_REPORT.md).
+
 Published app tested: https://credit-risk-dxit.onrender.com/dashboard/Date: 15/11/2026
 
 ## Accounts tested
