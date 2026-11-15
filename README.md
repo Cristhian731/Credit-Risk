@@ -23,11 +23,14 @@ must be reviewed before any real use.
 | Module | What it does |
 |---|---|
 | Transactions and dashboard | Income and expenses saved in the database (edit, delete, pagination); totals are calculated when read, never stored |
-| Credit evaluation (`/credit/`) | The **champion** model (chosen by a documented rule) predicts from 9 form fields; each evaluation is saved with its customer and model version and listed in `/credit/history` |
+| Credit request (`/credit/`) | The applicant sends a request (prefilled from the finances); the **champion** model scores it on the server and the request starts as Pending. Requests are listed with their status in `/credit/history`; open ones can be edited or withdrawn |
+| Analyst pages (`/reviews/`) | Review queue (mandatory reviews first), decision with a written justification (Approve, Reject, Request documents), real outcome (Repaid or Defaulted) of approved requests, decisions history and indicators; each decision stores whether it followed the model |
+| Administrator pages (`/admin/`) | Users and roles, categories, monitoring (inference log with response times and errors, predictions vs. real outcomes, initial operational review) and reports with a CSV of the decisions |
+| Home page (`/`) | Project documentation (problem, objectives, reference framework, methodology and schedule, references) and the links to the resources |
 | Finance to risk (`/credit/?source=finance`) | Prefills the monthly income and the debt-to-income ratio from the user's last complete months |
 | Model pages (`/credit/models/`) | Four tabs (Logistic Regression, Random Forest, XGBoost, Comparison) with metrics, confusion matrix, ROC curve, feature importance, every experiment run and an "About this algorithm" text; each tab can predict with its own model |
 | Methodology (`/methodology/`) | The six CRISP-ML(Q) phases, written from the JSON artifacts: every figure on the pages is read from `ml/artifacts/*.json` |
-| Monitoring | Prediction log (JSON lines, no customer name or document, 90-day retention) and `python -m ml.monitor` (PSI against the train distribution) |
+| Monitoring | Inference log in the database (`inference_logs`) and a local JSON lines copy (no customer name or document, 90-day retention) and `python -m ml.monitor` (PSI against the train distribution) |
 | Authentication and security | Registration, login, logout; CSRF on every form; HttpOnly + SameSite session cookie (Secure in production); other users' records answer 404 |
 
 ## Architecture
