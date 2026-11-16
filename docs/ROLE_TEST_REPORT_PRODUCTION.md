@@ -9,8 +9,8 @@ Published app tested: https://credit-risk-dxit.onrender.com/dashboard/Date: 15/1
 | Account | Email | Username | Intended profile |
 |---|---|---|---|
 | A | Account A | admin | Admin user |
-| B | Account B | alejo | Standard user |
-| C | Account C | mariana | Standard user |
+| B | Account B | Account B | Standard user |
+| C | Account C | Account C | Standard user |
 
 ## Account A
 
@@ -24,7 +24,7 @@ Published app tested: https://credit-risk-dxit.onrender.com/dashboard/Date: 15/1
 
 ## Account B
 
-5. Account B: login. Logged in with Account B. Landed on: /dashboard/. Username in top bar: Yes ('alejo' appears in the top navigation bar along with the confirmation banner 'You have successfully logged in.').
+5. Account B: login. Logged in with Account B. Landed on: /dashboard/. Username in top bar: Yes ('Account B' appears in the top navigation bar along with the confirmation banner 'You have successfully logged in.').
 
 6. Account B: Dashboard. Totals displayed on dashboard cards — Income: 0.00 | Expenses: 0.00 | Balance: 0.00 | Credit evaluations: 0. [Note: Attach updated screenshot showing the address bar with https://credit-risk-dxit.onrender.com/dashboard/]
 
@@ -34,7 +34,7 @@ Published app tested: https://credit-risk-dxit.onrender.com/dashboard/Date: 15/1
 
 ## Account C
 
-9. Account C: login. Logged in with Account C. Landed on: /dashboard/. Username in top bar: Yes ('mariana' appears in the top navigation bar).
+9. Account C: login. Logged in with Account C. Landed on: /dashboard/. Username in top bar: Yes ('Account C' appears in the top navigation bar).
 
 10. Account C: Dashboard. Totals displayed on dashboard cards — Income: 0.00 | Expenses: 0.00 | Balance: 0.00 | Credit evaluations: 0. [Note: Attach updated screenshot showing the address bar with https://credit-risk-dxit.onrender.com/dashboard/]
 
