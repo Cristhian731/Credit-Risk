@@ -57,3 +57,11 @@ def test_manual_is_a_readable_page(client):
     html = client.get("/manual").get_data(as_text=True)
     assert "User Manual" in html and "Getting started" in html
     assert "img/manual/figure_01.png" in html
+
+
+def test_final_documents_are_published_and_linked(client):
+    html = client.get("/resources").get_data(as_text=True)
+    for name in ("Final_Report.pdf", "RL_Blog.docx"):
+        assert f"docs/{name}" in html
+        assert client.get(f"/static/docs/{name}").status_code == 200
+    assert "Not published yet" not in html

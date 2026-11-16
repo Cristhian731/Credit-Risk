@@ -18,6 +18,10 @@ must be reviewed before any real use.
 | **Notebook (Google Colab)** | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Cristhian731/Credit-Risk/blob/main/notebooks/credit_risk_dimensionality.ipynb) |
 | **Clustering notebook (Google Colab)** | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Cristhian731/Credit-Risk/blob/main/notebooks/credit_risk_clustering.ipynb): K-Means, DBSCAN and Agglomerative Clustering on the train split; writes `ml/artifacts/clustering_report.json` |
 | **Methodology (no login)** | `/methodology/`: overview and one page for each CRISP-ML phase |
+| **Final report (PDF)** | `static/docs/Final_Report.pdf`: consolidates the three activities (also `Activity1_Technical_Report.pdf` and `Activity2_System_Report.pdf`) |
+| **Blog on reinforcement learning** | `static/docs/RL_Blog.docx` |
+| **User manual (web page)** | `/manual`, generated from `docs/USER_MANUAL.md` |
+| **Resources and video** | `/resources`; the video link comes from the `VIDEO_URL` environment variable (YouTube or Vimeo links are embedded in the home page); without it the pages show "Video: link pending" |
 
 ## What is built
 
@@ -27,7 +31,7 @@ must be reviewed before any real use.
 | Credit request (`/credit/`) | The applicant sends a request (prefilled from the finances); the **champion** model scores it on the server and the request starts as Pending. Requests are listed with their status in `/credit/history`; open ones can be edited or withdrawn |
 | Analyst pages (`/reviews/`) | Review queue (mandatory reviews first), decision with a written justification (Approve, Reject, Request documents), real outcome (Repaid or Defaulted) of approved requests, decisions history and indicators; each decision stores whether it followed the model |
 | Administrator pages (`/admin/`) | Users and roles, categories, monitoring (inference log with response times and errors, predictions vs. real outcomes, initial operational review) and reports with a CSV of the decisions |
-| Home page (`/`) | Project documentation (problem, objectives, reference framework, methodology and schedule, references) and the links to the resources |
+| Home page (`/`) | Complete project documentation (PGC) with a contents list: title, problem and justification, objectives with their verification, reference framework, methodology with the planned and actual schedule, results and verified APA 7 references; quick access to the report, evidence, repository, manual and video |
 | Finance to risk (`/credit/?source=finance`) | Prefills the monthly income and the debt-to-income ratio from the user's last complete months |
 | Model pages (`/credit/models/`) | Four tabs (Logistic Regression, Random Forest, XGBoost, Comparison) with metrics, confusion matrix, ROC curve, feature importance, every experiment run and an "About this algorithm" text; each tab can predict with its own model |
 | Methodology (`/methodology/`) | The six CRISP-ML(Q) phases, written from the JSON artifacts: every figure on the pages is read from `ml/artifacts/*.json` |
@@ -154,7 +158,7 @@ wrong role it answers a 403 page. The menus of each role are listed in `app/menu
 | Command | Purpose |
 |---|---|
 | `flask --app run db upgrade` | Create or update the database schema |
-| `flask --app run seed-demo` | Create the demo user and its sample transactions, and set its password to `DEMO_PASSWORD` (safe to run again) |
+| `flask --app run seed-demo` | Create the demo user and set its password to `DEMO_PASSWORD`; if the account has no transactions, add labeled "Sample data" income and expenses of the last three complete months with a "Loan payment" debt category (safe to run again) |
 | `flask --app run create-user --role {applicant,analyst,admin} --email EMAIL` | Create or update an account with a role. The password is read from the environment variable `NEW_USER_PASSWORD` (or the one named by `--password-env`), never from an argument |
 | `flask --app run bootstrap-accounts` | Create or update the admin and analyst accounts named by the `BOOTSTRAP_*` variables (safe to run again; skips a role with a missing value) |
 | `flask --app run purge-prediction-log` | Delete the prediction log entries older than `PREDICTION_LOG_RETENTION_DAYS` |
@@ -177,6 +181,7 @@ wrong role it answers a 403 page. The menus of each role are listed in `app/menu
 | `TEST_DATABASE_URL` | Database for the test suite (an empty one; tests create and drop tables) | in-memory SQLite |
 | `LOG_LEVEL`, `LOG_FILE` | Log level and optional rotating log file | `INFO`, none |
 | `DEMO_PASSWORD` | Password of the demo account, set by `seed-demo` and shown in the Methodology overview. **Required in production** (no default there) | `demo-password-2026` in development and tests |
+| `VIDEO_URL` | Link of the project video (`https://`). YouTube and Vimeo links are embedded in the home and resources pages; empty shows "Video: link pending" | empty |
 | `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ANALYST_EMAIL`, `BOOTSTRAP_ANALYST_PASSWORD` | Accounts created or updated at every start (Render's free plan has no shell). Set them only in the environment, never in the repository | none |
 | `PREDICTION_LOG_PATH` | JSON lines log of the predictions of the trained models (no customer name or document; ignored by git). Empty turns it off | `logs/predictions.jsonl` (off in tests) |
 | `PREDICTION_LOG_RETENTION_DAYS` | Days that the prediction log is kept (see Phase 6 of the Methodology) | `90` |
