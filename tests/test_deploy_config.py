@@ -69,3 +69,19 @@ def test_seed_demo_can_run_every_start_and_only_updates_the_password(app):
     assert len(users) == 1
     assert users[0].check_password("another-password-2027")
     assert not users[0].check_password("demo-password-2026")
+
+
+def test_env_example_lists_every_variable_and_holds_no_secret():
+    import re
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    text = open(os.path.join(root, ".env.example"), encoding="utf-8").read()
+    names = set(re.findall(r"^([A-Z_]+)=", text, re.M))
+    for name in ("FLASK_CONFIG", "SECRET_KEY", "DATABASE_URL", "AUTH_ENABLED", "DEMO_PASSWORD",
+                 "BOOTSTRAP_ADMIN_EMAIL", "BOOTSTRAP_ADMIN_PASSWORD", "BOOTSTRAP_ANALYST_EMAIL",
+                 "BOOTSTRAP_ANALYST_PASSWORD", "TEST_DATABASE_URL", "PREDICTION_LOG_PATH"):
+        assert name in names, name
+    for line in text.splitlines():
+        if re.match(r"^[A-Z_]*(PASSWORD|SECRET_KEY)=", line):
+            assert line.split("=", 1)[1].startswith("change-me"), line  # only visible placeholders
+    assert not re.search(r"postgres(ql)?://\w+:\w+@", text)
