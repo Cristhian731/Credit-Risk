@@ -2,7 +2,7 @@
 
 Credit Risk and Loan Viability Prediction Platform
 
-Credit Risk is a web platform with two purposes: to record your income and expenses and follow your balance, and to request a loan that a credit analyst reviews with the help of a machine learning model. This manual explains each screen step by step.
+Credit Risk is a web platform with two purposes: to record your income and expenses and follow your balance, and to request a loan that a credit analyst reviews with the help of a machine learning model. This manual explains each screen step by step. The figures use invented sample data.
 
 The application is available at https://credit-risk-dxit.onrender.com/. It works in any modern browser, on a computer or a phone. Each account only sees its own data: nobody else can see your transactions or requests. Analysts and administrators have their own pages and are not described in this manual.
 
@@ -24,7 +24,7 @@ The application is available at https://credit-risk-dxit.onrender.com/. It works
 
 ![Figure 3](img/user_manual/figure_03.png)
 
-*Figure 3. Top bar while logged in (the menu on the left was added later)*
+*Figure 3. Top bar and menu on the left while logged in*
 
 ## Finances
 
