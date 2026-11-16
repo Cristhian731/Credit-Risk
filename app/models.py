@@ -1,11 +1,7 @@
-
 from datetime import datetime, timezone
-
 from sqlalchemy.orm import validates
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from .extensions import db
-
 
 TRANSACTION_TYPES = ("income", "expense")
 
@@ -13,26 +9,21 @@ EMPLOYMENT_STATUSES = ("employed", "self_employed", "retired", "unemployed")
 PAYMENT_HISTORIES = ("good", "fair", "poor")
 RISK_LABELS = ("Approved", "Medium Risk", "High Risk")
 
-
 def utcnow():
     return datetime.now(timezone.utc)
-
 
 def _in_check(column, values):
     """SQL CHECK constraint text: ``column IN ('a', 'b')``."""
     options = ", ".join(f"'{value}'" for value in values)
     return f"{column} IN ({options})"
 
-
 def _require_choice(field, value, allowed):
     if value not in allowed:
         raise ValueError(f"{field} must be one of {allowed}, got {value!r}.")
     return value
 
-
 class User(db.Model):
     
-
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -52,7 +43,6 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-
 
 class Category(db.Model):
 
@@ -101,7 +91,6 @@ class Transaction(db.Model):
 
 
 class Budget(db.Model):
-    """A spending limit for one category in one month."""
 
     __tablename__ = "budgets"
 
