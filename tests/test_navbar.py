@@ -8,7 +8,7 @@ from app.auth.services import register_user
 EMAIL = "ana@example.com"
 PASSWORD = "correct-horse-battery"
 
-PUBLIC_LABELS = ("The Problem", "Objective", "How It Works", "Technologies")
+PUBLIC_LABELS = ("Documentation", "Video", "How It Works")
 APP_LABELS = ("My finances", "Dashboard", "New request", "My requests")
 
 
