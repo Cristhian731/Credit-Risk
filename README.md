@@ -91,6 +91,7 @@ pip install -r requirements.txt
    python -m ml.monitor --build-reference             # reference_distribution.json (statistics only)
    python -m ml.monitor --simulated                   # a SIMULATED batch with intentional drift
    python -m ml.monitor --log logs/predictions.jsonl  # a real batch: the prediction log of the app
+   python -m ml.monitor --from-db                     # a real batch: the credit applications of the database (DATABASE_URL)
    ```
    A log with fewer than 500 predictions gets a warning in the report: its PSI is mostly sampling noise.
 5. **Tests:**
@@ -158,6 +159,7 @@ wrong role it answers a 403 page. The menus of each role are listed in `app/menu
 | `flask --app run purge-prediction-log` | Delete the prediction log entries older than `PREDICTION_LOG_RETENTION_DAYS` |
 | `python -m ml.monitor --simulated` | PSI of a SIMULATED batch against the train distribution; writes `ml/artifacts/monitoring_report.json` |
 | `python -m ml.monitor --log logs/predictions.jsonl` | The same with the real prediction log |
+| `python -m ml.monitor --from-db` | The same with the inputs of the credit applications stored in the database (no name, no document); it works with the database of Render when `DATABASE_URL` is set |
 | `python -m ml.monitor --build-reference` | Rebuild `ml/artifacts/reference_distribution.json` from the dataset (statistics only) |
 | `flask --app run adopt-legacy-db OLD NEW` | Move a database created before migrations existed (see [docs/MIGRATIONS.md](docs/MIGRATIONS.md)) |
 

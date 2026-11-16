@@ -535,7 +535,7 @@ def validate_monitoring_report(report):
     """Validate monitoring_report.json: PSI per feature and label rates of a batch against train.
 
     ``source`` is ``SIMULATED`` for the generated batch (``simulated`` is then true and
-    ``batch.drift_injected`` lists the drift put on purpose) or ``PREDICTION_LOG`` for a real log.
+    ``batch.drift_injected`` lists the drift put on purpose) ``PREDICTION_LOG`` for a real log or ``DATABASE`` for the credit applications of the database.
     """
     keys = ("generated_at", "source", "simulated", "model", "artifacts_version", "reference", "batch",
             "thresholds", "psi", "overall_status", "features_in_alert", "features_to_watch", "labels",
@@ -543,8 +543,8 @@ def validate_monitoring_report(report):
     errors = _check_keys(report, keys, "monitoring_report")
     if errors:
         return errors
-    if report["source"] not in ("SIMULATED", "PREDICTION_LOG"):
-        errors.append("monitoring_report.source must be SIMULATED or PREDICTION_LOG")
+    if report["source"] not in ("SIMULATED", "PREDICTION_LOG", "DATABASE"):
+        errors.append("monitoring_report.source must be SIMULATED, PREDICTION_LOG or DATABASE")
     if report["simulated"] != (report["source"] == "SIMULATED"):
         errors.append("monitoring_report.simulated must be true exactly when source is SIMULATED")
     if not isinstance(report["generated_at"], str) or not _ISO_UTC.fullmatch(report["generated_at"]):

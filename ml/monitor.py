@@ -5,6 +5,7 @@ Usage from the project root:
     python -m ml.monitor --build-reference          # statistics of the train split (needs the dataset)
     python -m ml.monitor --simulated                # SIMULATED batch with an intentional drift
     python -m ml.monitor --log logs/predictions.jsonl   # a real batch: the prediction log of the app
+    python -m ml.monitor --from-db                  # a real batch: the credit applications of the database (DATABASE_URL)
 
 Output (next to manifest.json):
 
@@ -225,6 +226,55 @@ def batch_from_log(path):
     return batch, risk, period
 
 
+def batch_from_db(url=None):
+    """Read the model inputs, the risk and the dates of every credit application stored in the database.
+
+    Only the nine inputs of the form, the risk percentage and the creation date are read: no name, no
+    document number and no user. ``url`` is a SQLAlchemy URL (default: ``DATABASE_URL`` or the local
+    SQLite file, as in the application). The inputs are turned into model features by the same function
+    that the application uses for every prediction.
+    """
+    from sqlalchemy import create_engine, text
+
+    from config import database_url
+    from ml.features import CATEGORICAL_ENCODINGS, FEATURE_ORDER, to_model_frame
+
+    engine = create_engine(url or _local_url(database_url()))
+    columns = ", ".join(FEATURE_ORDER)
+    try:
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text(f"SELECT {columns}, risk_percent, created_at FROM credit_applications ORDER BY id")
+            ).mappings().all()
+    finally:
+        engine.dispose()
+    if not rows:
+        raise ValueError("The database has no credit applications.")
+    frames, risk, dates = [], [], []
+    for row in rows:
+        values = {name: row[name] for name in FEATURE_ORDER}
+        for name, encoding in CATEGORICAL_ENCODINGS.items():
+            values[name] = encoding[values[name]]
+        frames.append(to_model_frame(values))
+        risk.append(float(row["risk_percent"]) / 100)
+        dates.append(str(row["created_at"]))
+    batch = pd.concat(frames, ignore_index=True)
+    period = {"from": _utc(min(dates)), "to": _utc(max(dates))}
+    return batch, np.array(risk, dtype=float), period
+
+
+def _local_url(url):
+    """A relative SQLite URL points to the instance folder of the application, like in Flask-SQLAlchemy."""
+    prefix = "sqlite:///"
+    if url.startswith(prefix) and not os.path.isabs(url[len(prefix):]) and url[len(prefix):] != ":memory:":
+        return prefix + os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "instance", url[len(prefix):])
+    return url
+
+
+def _utc(text):
+    return text[:19].replace(" ", "T") + "Z"
+
+
 def _rates(labels):
     labels = pd.Series(list(labels))
     return {label: _round((labels == label).mean()) for label in RISK_LABELS}
@@ -249,7 +299,7 @@ def build_report(batch, risk, reference, manifest, source, seed=None, period=Non
     }[overall]
     if not simulated and len(batch) < MIN_RELIABLE_ROWS:
         recommendation += (
-            f" Only {len(batch)} predictions in the log (fewer than {MIN_RELIABLE_ROWS}): the PSI values are"
+            f" Only {len(batch)} predictions in the batch (fewer than {MIN_RELIABLE_ROWS}): the PSI values are"
             " dominated by sampling noise and do not show drift. Wait for a larger batch."
         )
     if simulated:
@@ -284,7 +334,7 @@ def build_report(batch, risk, reference, manifest, source, seed=None, period=Non
     }
 
 
-def run(log_path=None, simulated=False, artifacts_dir=ARTIFACTS_DIR, rows=SIMULATED_ROWS, seed=SIMULATED_SEED):
+def run(log_path=None, simulated=False, artifacts_dir=ARTIFACTS_DIR, rows=SIMULATED_ROWS, seed=SIMULATED_SEED, from_db=False, db_url=None):
     """Compute the monitoring report of a batch and write monitoring_report.json."""
     reference = load_json(os.path.join(artifacts_dir, REFERENCE_DISTRIBUTION_FILENAME))
     manifest = load_json(os.path.join(artifacts_dir, MANIFEST_FILENAME))
@@ -293,6 +343,9 @@ def run(log_path=None, simulated=False, artifacts_dir=ARTIFACTS_DIR, rows=SIMULA
         model = joblib.load(os.path.join(artifacts_dir, reference["labels"]["model"], MODEL_FILENAME))
         risk = model.predict_proba(batch)[:, 1]
         report = build_report(batch, risk, reference, manifest, "SIMULATED", seed=seed, drift=SIMULATED_DRIFT)
+    elif from_db:
+        batch, risk, period = batch_from_db(db_url)
+        report = build_report(batch, risk, reference, manifest, "DATABASE", period=period)
     else:
         batch, risk, period = batch_from_log(log_path)
         report = build_report(batch, risk, reference, manifest, "PREDICTION_LOG", period=period)
@@ -312,6 +365,7 @@ def parse_args(argv=None):
     source.add_argument("--build-reference", action="store_true", help="write reference_distribution.json from the dataset")
     source.add_argument("--simulated", action="store_true", help="use a SIMULATED batch with an intentional drift")
     source.add_argument("--log", help="path of the prediction log (JSON lines) to analyse")
+    source.add_argument("--from-db", action="store_true", help="read the inputs from the credit applications of the database (DATABASE_URL)")
     parser.add_argument("--data", default=dataset.DEFAULT_DATA_PATH, help="path to Loan_default.csv (--build-reference)")
     parser.add_argument("--out", default=ARTIFACTS_DIR, help="artifacts directory")
     parser.add_argument("--rows", type=int, default=SIMULATED_ROWS, help="rows of the SIMULATED batch")
@@ -325,7 +379,7 @@ def main(argv=None):
         reference = build_reference(args.data, args.out)
         print(f"Reference distribution written ({reference['dataset']['train_rows']} train rows, no rows stored).")
         return
-    report = run(args.log, args.simulated, args.out, args.rows, args.seed)
+    report = run(args.log, args.simulated, args.out, args.rows, args.seed, from_db=args.from_db)
     print(f"{report['source']} batch of {report['batch']['rows']} rows: {report['overall_status']}")
     for name, item in report["psi"].items():
         print(f"  {name:<16} PSI {item['value']:.4f}  {item['status']}")
