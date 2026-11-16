@@ -352,3 +352,66 @@ def test_readme_documents_the_demo_password_and_no_longer_says_it_is_random():
     readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
     assert "DEMO_PASSWORD" in readme and "its password is random" not in readme
     assert "PREDICTION_LOG_PATH" in readme and "ml.monitor" in readme
+
+
+# PSI from the credit applications of the database (python -m ml.monitor --from-db)
+
+def _database_with_applications(tmp_path, rows):
+    """A SQLite file with the tables of the application and ``rows`` sample credit applications."""
+    from sqlalchemy import create_engine, text
+
+    import app.models  # noqa: F401  (registers the tables)
+    from app.extensions import db
+
+    url = f"sqlite:///{(tmp_path / 'monitor.db').as_posix()}"
+    engine = create_engine(url)
+    db.metadata.create_all(engine)
+    rng = np.random.default_rng(3)
+    with engine.begin() as connection:
+        connection.execute(text("INSERT INTO users (id, username, email, password_hash, role, created_at) "
+                                "VALUES (1, 'u', 'u@example.com', 'x', 'applicant', '2026-11-01 00:00:00')"))
+        connection.execute(text("INSERT INTO clients (id, full_name, document_number, user_id, created_at) "
+                                "VALUES (1, 'Secret Name', 'SECRET-DOC-9', 1, '2026-11-01 00:00:00')"))
+        for number in range(rows):
+            connection.execute(text(
+                "INSERT INTO credit_applications (age, monthly_income, employment_status, years_employment, credit_score, "
+                "existing_debt, dti_ratio, loan_amount, loan_term, previous_loans, payment_history, risk_label, risk_percent, "
+                "model_version, status, client_id, user_id, created_at) VALUES (:age, :inc, :emp, :yrs, :score, :debt, :dti, "
+                ":loan, :term, :prev, :hist, 'Approved', :risk, 'lr@x', 'Pending', 1, 1, :at)"),
+                {"age": int(rng.integers(20, 65)), "inc": float(rng.integers(1500, 9000)),
+                 "emp": str(rng.choice(["employed", "self_employed", "retired", "unemployed"])),
+                 "yrs": float(rng.integers(0, 20)), "score": int(rng.integers(350, 840)), "debt": 1000.0,
+                 "dti": float(rng.integers(5, 90)), "loan": float(rng.integers(2000, 40000)),
+                 "term": int(rng.choice([12, 24, 36, 48, 60])), "prev": int(rng.integers(0, 4)),
+                 "hist": str(rng.choice(["good", "fair", "poor"])), "risk": float(rng.uniform(5, 90)),
+                 "at": f"2026-11-{1 + number % 28:02d} 10:00:00"})
+    engine.dispose()
+    return url
+
+
+def test_psi_report_from_the_database_has_no_personal_data_and_warns_when_small(artifacts, tmp_path):
+    url = _database_with_applications(tmp_path, 40)
+    report = monitor.run(artifacts_dir=artifacts, from_db=True, db_url=url)
+    assert report["source"] == "DATABASE" and report["simulated"] is False and report["batch"]["rows"] == 40
+    assert "fewer than" in report["recommendation"]
+    assert set(report["psi"]) == set(MODEL_FEATURES)
+    assert report["batch"]["period"]["from"] <= report["batch"]["period"]["to"]
+    written = open(os.path.join(artifacts, "monitoring_report.json"), encoding="utf-8").read()
+    assert "Secret Name" not in written and "SECRET-DOC-9" not in written
+
+
+def test_psi_report_from_a_large_database_has_no_noise_warning(artifacts, tmp_path):
+    url = _database_with_applications(tmp_path, 600)
+    report = monitor.run(artifacts_dir=artifacts, from_db=True, db_url=url)
+    assert report["batch"]["rows"] == 600 and "fewer than" not in report["recommendation"]
+
+
+def test_psi_from_an_empty_database_is_rejected(artifacts, tmp_path):
+    url = _database_with_applications(tmp_path, 0)
+    with pytest.raises(ValueError):
+        monitor.run(artifacts_dir=artifacts, from_db=True, db_url=url)
+
+
+def test_from_db_is_a_command_line_source():
+    args = monitor.parse_args(["--from-db"])
+    assert args.from_db is True and args.log is None and args.simulated is False
