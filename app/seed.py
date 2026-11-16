@@ -8,29 +8,42 @@ from .extensions import db
 from .models import User
 from .services import repository
 
-DEMO_TRANSACTIONS = [
-    {
-        "type": "income",
-        "amount": Decimal("2500000.00"),
-        "date": date(2026, 11, 1),
-        "category": "Salary",
-        "description": "Monthly salary",
-    },
-    {
-        "type": "expense",
-        "amount": Decimal("850000.00"),
-        "date": date(2026, 11, 2),
-        "category": "Housing",
-        "description": "Rent",
-    },
-    {
-        "type": "expense",
-        "amount": Decimal("120500.00"),
-        "date": date(2026, 11, 4),
-        "category": "Food",
-        "description": "Groceries",
-    },
-]
+SAMPLE_LABEL = "Sample data"
+
+# (type, category, description, amount in USD, day of the month) of each of the last 3 complete months.
+_MONTHLY_PATTERN = (
+    ("income", "Salary", "Monthly salary", Decimal("4200.00"), 1),
+    ("expense", "Housing", "Rent", Decimal("900.00"), 3),
+    ("expense", "Food", "Groceries", Decimal("350.00"), 6),
+    ("expense", "Loan payment", "Personal loan installment", Decimal("600.00"), 10),
+)
+SAMPLE_MONTHS = 3
+
+
+def demo_transactions(today=None):
+    """Sample income and expenses of the 3 last COMPLETE months before ``today``, labeled "Sample data".
+
+    The credit form takes the average of those months, so a fresh demo account fills the income and
+    the debt-to-income ratio by itself. The "Loan payment" category is a suggested debt category.
+    """
+    today = today or date.today()
+    year, month = today.year, today.month
+    rows = []
+    for _ in range(SAMPLE_MONTHS):
+        month -= 1
+        if month == 0:
+            year, month = year - 1, 12
+        for kind, category, description, amount, day in _MONTHLY_PATTERN:
+            rows.append(
+                {
+                    "type": kind,
+                    "amount": amount,
+                    "date": date(year, month, day),
+                    "category": category,
+                    "description": f"{SAMPLE_LABEL}: {description}",
+                }
+            )
+    return rows
 
 
 def ensure_demo_user(password=None):
@@ -72,7 +85,7 @@ def seed_demo(password=None):
     user, created = ensure_demo_user(password)
     added = 0
     if not repository.list_transactions(user.id):
-        for transaction in DEMO_TRANSACTIONS:
+        for transaction in demo_transactions():
             repository.save_transaction({**transaction, "user_id": user.id})
             added += 1
     return {"user_created": created, "transactions_added": added}
