@@ -1,19 +1,54 @@
 {% extends "base.html" %}
 {% block title %}Resources | Credit Risk{% endblock %}
+{% macro item(title, text, href=None, external=False) %}
+  <div class="col-md-6">
+    <div class="card h-100 p-3 resource-card">
+      <h2 class="h6 fw-bold mb-1">{{ title }}</h2>
+      <p class="small text-muted flex-grow-1">{{ text }}</p>
+      {% if href %}
+        <a class="stretched-link fw-semibold" href="{{ href }}"{% if external %} rel="noopener" target="_blank"{% endif %}>Open</a>
+      {% else %}
+        <span class="text-muted small">Not published yet</span>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}
+{% set repo = "https://github.com/Cristhian731/Credit-Risk" %}
+{% set colab = "https://colab.research.google.com/github/Cristhian731/Credit-Risk/blob/main/notebooks/" %}
 {% block content %}
 <section class="py-5">
   <div class="container">
-    <h1 class="h3 fw-bold mb-3">Resources</h1>
-    <p class="text-muted">Material of the project. Each item is linked here when it is published.</p>
-    <ul class="list-group" data-testid="resources-list">
-      <li class="list-group-item d-flex justify-content-between"><span>Technical report (PDF)</span><span class="text-muted">Available at delivery</span></li>
-      <li class="list-group-item d-flex justify-content-between"><span>Source code repository</span><span class="text-muted">Available at delivery</span></li>
-      <li class="list-group-item d-flex justify-content-between"><span>Training notebook (Colab)</span><span class="text-muted">Available at delivery</span></li>
-      <li class="list-group-item d-flex justify-content-between"><span>Technical manual and user manual</span><span class="text-muted">Available at delivery</span></li>
-      <li class="list-group-item d-flex justify-content-between"><span>Project video</span><span class="text-muted">Available at delivery</span></li>
-      <li class="list-group-item"><a href="{{ url_for('methodology.overview') }}">Methodology: the six CRISP-ML(Q) phases</a></li>
-      <li class="list-group-item"><a href="{{ url_for('credit.models') }}">Models: results of the trained models (read only)</a></li>
-    </ul>
+    <h1 class="h3 fw-bold mb-1">Resources</h1>
+    <p class="text-muted mb-4">Everything delivered with the project: reports, evidence of each CRISP-ML(Q) phase, code, manual and video.</p>
+
+    <h2 class="h5 fw-bold mb-3">Reports and documents</h2>
+    <div class="row g-3 mb-4" data-testid="resources-list">
+      {{ item("Final report (PDF)", "Consolidates the three activities: documentation, six phases, architecture, tests, deployment, monitoring, results and contributions.", docs.final_report) }}
+      {{ item("Activity 1 report (PDF)", "Technical report of the CRISP-ML(Q) phases and the champion model.", docs.report1) }}
+      {{ item("Activity 2 report (PDF)", "Report of the information system: roles, request flow, database, monitoring.", docs.report2) }}
+      {{ item("Reinforcement learning blog (.docx)", "Use cases of reinforcement learning, with an application proposal for credit risk.", docs.blog) }}
+      {{ item("User manual", "Step-by-step guide for applicants, readable as a web page.", url_for('main.manual')) }}
+      {{ item("Technical documentation", "System design, database, integration and migrations, in the repository.", repo ~ "/tree/main/docs", True) }}
+    </div>
+
+    <h2 class="h5 fw-bold mb-3">CRISP-ML(Q) evidence</h2>
+    <div class="row g-3 mb-4">
+      {{ item("Methodology: the six phases", "One page per phase, with figures read from the training artifacts.", url_for('methodology.overview')) }}
+      {{ item("Models", "Metrics, curves and champion of the three trained models (read only).", url_for('credit.models')) }}
+      {{ item("Training artifacts (JSON)", "Manifest, experiments, data report, subgroups, clustering and monitoring reports.", repo ~ "/tree/main/ml/artifacts", True) }}
+      {{ item("PCA and t-SNE notebook (Colab)", "Dimensionality reduction analysis and the experiment without age.", colab ~ "credit_risk_dimensionality.ipynb", True) }}
+      {{ item("Clustering notebook (Colab)", "K-Means, DBSCAN and Agglomerative Clustering.", colab ~ "credit_risk_clustering.ipynb", True) }}
+    </div>
+
+    <h2 class="h5 fw-bold mb-3">System, code and video</h2>
+    <div class="row g-3 mb-4">
+      {{ item("Published system", "The running application. The operational modules require an account.", url_for('main.index')) }}
+      {{ item("Source repository", "Code, tests, notebooks, README and reproduction steps.", repo, True) }}
+    </div>
+    <div class="card p-3" id="video">
+      <h2 class="h6 fw-bold mb-2">Project video</h2>
+      {% include "main/_video.html" %}
+    </div>
   </div>
 </section>
 {% endblock %}

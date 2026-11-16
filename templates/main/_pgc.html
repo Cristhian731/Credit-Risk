@@ -1,73 +1,151 @@
-{# Project documentation (PGC) shown on the home page. Basic version; Activity 3 completes it. #}
+{# Project documentation (PGC) of the finished project, shown on the home page. #}
 <section class="py-5 bg-soft" id="pgc">
-  <div class="container" style="max-width: 960px">
-    <h2 class="text-center fw-bold mb-1">Project Documentation</h2>
-    <p class="text-center text-muted mb-4">Project management plan (PGC) of the platform.</p>
+  <div class="container pgc-doc">
+    <h2 class="text-center fw-bold mb-1">Project Documentation (PGC)</h2>
+    <p class="text-center text-muted mb-4">Project management plan of the platform, written with the decisions, results and changes of the finished project.</p>
 
-    <article class="mb-4" id="pgc-title">
-      <h3 class="h5 fw-bold">Project title</h3>
-      <p class="mb-0">Credit Risk and Loan Viability Prediction Platform: a machine learning web system for lending decision support.</p>
-    </article>
-
-    <article class="mb-4" id="pgc-problem">
-      <h3 class="h5 fw-bold">Problem statement and justification</h3>
-      <p>Credit risk is one of the main sources of vulnerability of banks. The Basel Committee on Banking Supervision (2017) requires capital in proportion to the credit exposure, because wrong lending decisions produce non-performing loans and provisioning costs. Traditional scorecards and manual reviews capture non-linear relations among the attributes of a borrower less well than machine learning classifiers (Lessmann et al., 2015; Dastile et al., 2020).</p>
-      <p class="mb-0">Approving a loan that will not be repaid increases the default rate; rejecting one that would have been repaid excludes a customer and loses revenue. Manual evaluation is also slow and differs between analysts. A system is needed that estimates the risk quickly and consistently, explains its limits, and leaves the final decision with a person who gives a reason (Bussmann et al., 2021).</p>
-    </article>
-
-    <article class="mb-4" id="pgc-objectives">
-      <h3 class="h5 fw-bold">General objective</h3>
-      <p>Develop a web platform that estimates the viability of a loan from the financial information of an applicant, using machine learning, to support the credit decision of an analyst.</p>
-      <h3 class="h5 fw-bold">Specific objectives</h3>
+    <nav class="pgc-toc card p-3 mb-5" aria-label="Documentation sections" data-testid="pgc-toc">
+      <h3 class="h6 fw-bold text-uppercase text-muted mb-2">Contents</h3>
       <ol class="mb-0">
-        <li>Document the requirements and the business process of a credit request.</li>
-        <li>Build a clean, validated dataset with exploratory analysis and feature engineering.</li>
-        <li>Train and compare logistic regression, random forest and XGBoost, and select a champion with documented criteria.</li>
-        <li>Implement, test and deploy the web system with roles, request flow, inference log and monitoring.</li>
+        <li><a href="#pgc-title">Project title</a></li>
+        <li><a href="#pgc-problem">Problem statement and justification</a></li>
+        <li><a href="#pgc-general">General objective</a></li>
+        <li><a href="#pgc-specific">Specific objectives</a></li>
+        <li><a href="#pgc-framework">Reference framework</a></li>
+        <li><a href="#pgc-methodology">Methodology and development schedule</a></li>
+        <li><a href="#pgc-references">Bibliographic references</a></li>
       </ol>
+    </nav>
+
+    <article class="mb-5" id="pgc-title">
+      <h3 class="h4 fw-bold">1. Project title</h3>
+      <p class="mb-0"><strong>Credit Risk and Loan Viability Prediction Platform</strong>: a machine learning web system that supports the lending decision of a credit analyst. Universidad de Cundinamarca, Machine Learning (seventh semester). Team: Cristhian Stiven Aza Diaz, Harrison Camargo and Alejandro Alarcon.</p>
     </article>
 
-    <article class="mb-4" id="pgc-framework">
-      <h3 class="h5 fw-bold">Reference framework</h3>
-      <p>Lessmann et al. (2015) compared 41 classifiers and found that ensembles outperform individual classifiers and logistic regression. Dastile et al. (2020) reviewed credit scoring models and noted the lack of interpretability of the most complex ones. Gunnarsson et al. (2021) showed that deep networks bring little gain over tuned gradient boosting on tabular credit data. Chen and Guestrin (2016) introduced XGBoost. Bussmann et al. (2021) showed that explainable techniques make credit models understandable for risk managers.</p>
-      <p class="mb-0">The project therefore compares a simple baseline with two ensembles, publishes the results of each one in read-only pages, and keeps a human analyst in the decision.</p>
+    <article class="mb-5" id="pgc-problem">
+      <h3 class="h4 fw-bold">2. Problem statement and justification</h3>
+
+      <h4 class="h6 fw-bold">The problem</h4>
+      <p>A lender must decide whether to grant a loan to a person whose future behavior it cannot observe. If it approves a loan that is not repaid, it loses money; if it rejects one that would have been repaid, it loses a customer and denies credit to someone who deserved it. Manual evaluation is slow, differs from one analyst to another and leaves little record of why a decision was taken.</p>
+
+      <h4 class="h6 fw-bold">Context</h4>
+      <p>Credit risk is one of the main sources of vulnerability of banks. The Basel Committee on Banking Supervision (2017) requires institutions to hold capital in proportion to their credit exposure, because wrong lending decisions produce non-performing loans and provisioning costs. Traditional scorecards capture the non-linear relations among the attributes of a borrower less well than machine learning classifiers (Lessmann et al., 2015; Dastile et al., 2020).</p>
+
+      <h4 class="h6 fw-bold">Affected population</h4>
+      <p>Three groups are affected: applicants, who wait for an answer and need it to be fair and explained; credit analysts, who review many requests with little time; and the institution, which carries the losses of its defaults and answers to the regulator. Young applicants are a special case: in the data of this project, applicants aged 18 to 24 default more often than older ones (21% against 5% at ages 55 to 69), so a model that uses age can treat them very differently from the rest.</p>
+
+      <h4 class="h6 fw-bold">Evidence</h4>
+      <p>The public dataset used (Loan Default Prediction Dataset, 255,347 loans, 18 columns) shows a default rate of 11.6%, so about one loan in nine is not repaid and a model that approves everything would accept all of those losses. The evaluation of the three candidate models confirmed that the signal is limited: the champion reaches a mean cross-validation ROC AUC of 0.711 and a recall of 0.664 for the defaulters, with a precision of about 0.20 (Methodology, <a href="{{ url_for('methodology.phase', number=4) }}">phase 4</a>). Most flagged applicants would have repaid, which is why the system never decides alone.</p>
+
+      <h4 class="h6 fw-bold">Consequences</h4>
+      <p>Without a consistent estimate, the institution approves risky loans or rejects good ones. With a model used without control, the opposite problem appears: the evaluation by age group showed that the champion flags 85% of the applicants aged 18 to 24 and only 6% of those aged 55 to 69 (<a href="{{ url_for('methodology.phase', number=5) }}">phase 5</a>). Using that output as an automatic decision would be unfair and hard to defend.</p>
+
+      <h4 class="h6 fw-bold">Relevance and how the system helps</h4>
+      <p>The platform estimates the risk of each request in the server with the champion model, stores every prediction with its date, user, result and model version, and sends the request to an analyst, who approves, rejects or asks for documents and always writes a reason. A human review is mandatory for High Risk results and for applicants aged 18 to 24. The system records whether the analyst followed or contradicted the model, shows indicators and monitors errors, response times and, when real outcomes exist, the actual AUC and recall (Bussmann et al., 2021). The model assists; the person decides.</p>
     </article>
 
-    <article class="mb-4" id="pgc-methodology">
-      <h3 class="h5 fw-bold">Methodology and development schedule</h3>
-      <p>The machine learning work follows CRISP-ML(Q) in six phases; the system is built in iterations (Scrum) with one branch and one reviewed pull request per block.</p>
-      <ol>
-        {% for number, phase_title in methodology_phases %}
-          <li><a href="{{ url_for('methodology.phase', number=number) }}">{{ phase_title }}</a></li>
-        {% endfor %}
-      </ol>
+    <article class="mb-5" id="pgc-general">
+      <h3 class="h4 fw-bold">3. General objective</h3>
+      <p class="mb-0">Develop and deploy a web platform that estimates the viability of a loan from the financial information of an applicant, using a machine learning model selected with documented criteria, to support the decision of a credit analyst with a traceable, role-based process.</p>
+    </article>
+
+    <article class="mb-5" id="pgc-specific">
+      <h3 class="h4 fw-bold">4. Specific objectives</h3>
+      <p>Each objective is verifiable with evidence that is published in the system or in the repository.</p>
       <div class="table-responsive">
-        <table class="table table-sm bg-white" data-testid="schedule">
-          <thead><tr><th>Activity</th><th>Responsible</th><th>Planned</th><th>Actual</th><th>Deliverable</th></tr></thead>
+        <table class="table pgc-table" data-testid="objectives">
+          <thead><tr><th>Area</th><th>Objective</th><th>Verification</th><th>Result</th></tr></thead>
           <tbody>
-            <tr><td>Data, models and CRISP-ML(Q) phases</td><td>Team</td><td>Activity 1</td><td>Delivered</td><td>Models, metrics, methodology pages, technical report</td></tr>
-            <tr><td>Design, roles and menus</td><td>Cristhian Aza</td><td>14 Nov 2026</td><td>Done</td><td>System design, role-based access, tests by role</td></tr>
-            <tr><td>Request flow, indicators and monitoring</td><td>Cristhian Aza</td><td>15 Nov 2026</td><td>Done</td><td>Statuses, analyst review, inference log, indicators</td></tr>
-            <tr><td>Database description</td><td>Harrison Camargo</td><td>15 Nov 2026</td><td>Done</td><td>Database document</td></tr>
-            <tr><td>User manual and role tests</td><td>Alejandro Alarcon</td><td>15 Nov 2026</td><td>Manual done; role report generated from the tests</td><td>User manual, role test report</td></tr>
-            <tr><td>Final documentation, report and video</td><td>Team</td><td>Activity 3</td><td>Pending</td><td>Consolidated report, 20-minute video</td></tr>
+            <tr><td>Data preparation</td><td>Validate and clean the dataset, document its quality and build the features without leaking the test split.</td><td><a href="{{ url_for('methodology.phase', number=2) }}">Phase 2</a>; <code>data_report.json</code>; SHA-256 of the file checked</td><td>Met: 0 null cells, 0 duplicates, 80/20 stratified split, test split used once</td></tr>
+            <tr><td>Model development and evaluation</td><td>Train logistic regression, random forest and XGBoost; compare them with 5-fold cross-validation and select a champion with a written rule and success criteria.</td><td><a href="{{ url_for('methodology.phase', number=3) }}">Phases 3</a> and <a href="{{ url_for('methodology.phase', number=4) }}">4</a>; <code>manifest.json</code>; <a href="{{ url_for('credit.models') }}">Models</a></td><td>Met: 3 success criteria passed; champion logistic regression (tie rule)</td></tr>
+            <tr><td>System implementation</td><td>Build a web system with three roles, the full credit request process, a persistent database, an inference history, indicators and monitoring.</td><td>Role test report; automated tests; repository</td><td>Met: Applicant, Credit Analyst and Administrator, authorization on every route</td></tr>
+            <tr><td>Solution validation</td><td>Deploy the system, verify persistence, authentication, permissions and inference, and document the monitoring and the limits.</td><td><a href="{{ url_for('methodology.phase', number=6) }}">Phase 6</a>; published-site role tests; user manual</td><td>Partly met: verified on the published site; no real outcomes yet, and no domain-expert review</td></tr>
           </tbody>
         </table>
       </div>
     </article>
 
-    <article class="mb-4" id="pgc-references">
-      <h3 class="h5 fw-bold">Bibliographic references</h3>
-      <p class="apa-reference">Basel Committee on Banking Supervision. (2017). <em>Basel III: Finalising post-crisis reforms</em>. Bank for International Settlements. <a href="https://www.bis.org/bcbs/publ/d424.htm">https://www.bis.org/bcbs/publ/d424.htm</a></p>
-      <p class="apa-reference">Bussmann, N., Giudici, P., Marinelli, D., &amp; Papenbrock, J. (2021). Explainable machine learning in credit risk management. <em>Computational Economics, 57</em>(1), 203–216. <a href="https://doi.org/10.1007/s10614-020-10042-0">https://doi.org/10.1007/s10614-020-10042-0</a></p>
-      <p class="apa-reference">Chen, T., &amp; Guestrin, C. (2016). XGBoost: A scalable tree boosting system. In <em>Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</em> (pp. 785–794). ACM. <a href="https://doi.org/10.1145/2939672.2939785">https://doi.org/10.1145/2939672.2939785</a></p>
-      <p class="apa-reference">Dastile, X., Celik, T., &amp; Potsane, M. (2020). Statistical and machine learning models in credit scoring: A systematic literature survey. <em>Applied Soft Computing, 91</em>, Article 106263. <a href="https://doi.org/10.1016/j.asoc.2020.106263">https://doi.org/10.1016/j.asoc.2020.106263</a></p>
-      <p class="apa-reference">Gunnarsson, B. R., vanden Broucke, S., Baesens, B., Óskarsdóttir, M., &amp; Lemahieu, W. (2021). Deep learning for credit scoring: Do or don't? <em>European Journal of Operational Research, 295</em>(1), 292–305. <a href="https://doi.org/10.1016/j.ejor.2021.03.006">https://doi.org/10.1016/j.ejor.2021.03.006</a></p>
-      <p class="apa-reference mb-0">Lessmann, S., Baesens, B., Seow, H.-V., &amp; Thomas, L. C. (2015). Benchmarking state-of-the-art classification algorithms for credit scoring: An update of research. <em>European Journal of Operational Research, 247</em>(1), 124–136. <a href="https://doi.org/10.1016/j.ejor.2015.05.030">https://doi.org/10.1016/j.ejor.2015.05.030</a></p>
+    <article class="mb-5" id="pgc-framework">
+      <h3 class="h4 fw-bold">5. Reference framework</h3>
+
+      <h4 class="h6 fw-bold">Background and related studies</h4>
+      <p>Lessmann et al. (2015) compared 41 classifiers on several credit datasets and found that ensembles outperform individual classifiers and the industry-standard logistic regression. Dastile et al. (2020) reviewed credit scoring models and described a move toward ensembles and deep learning, with the lack of interpretability as the main weakness. Gunnarsson et al. (2021) showed that deep networks give only marginal gains over tuned gradient boosting on tabular credit data, so simpler models are preferable in practice. Bussmann et al. (2021) showed that explainable techniques make credit models understandable for risk managers and regulators.</p>
+
+      <h4 class="h6 fw-bold">Theoretical foundations and technical concepts</h4>
+      <ul>
+        <li><strong>Binary classification.</strong> The task assigns each loan to repaid (0) or defaulted (1) and returns a probability. The positive class is the default.</li>
+        <li><strong>Logistic regression, random forest and XGBoost.</strong> A linear baseline, a bagged ensemble of trees and a boosted ensemble of trees. XGBoost was introduced by Chen and Guestrin (2016).</li>
+        <li><strong>ROC AUC and recall.</strong> The ROC AUC is the probability that the model gives a higher risk to a defaulter than to a borrower who repaid; recall is the share of real defaulters that the model detects.</li>
+        <li><strong>Cross-validation and the test split.</strong> Models are compared on the train split only; the test split is evaluated once to report, never to choose.</li>
+        <li><strong>Dimensionality reduction (PCA).</strong> PCA keeps the directions of largest variance (Jolliffe &amp; Cadima, 2016). It is not necessarily the best for prediction.</li>
+        <li><strong>Clustering.</strong> K-Means, DBSCAN and agglomerative clustering group applicants without using the label; the silhouette (Rousseeuw, 1987) measures how well separated the groups are.</li>
+        <li><strong>CRISP-ML(Q).</strong> A process model for machine learning with quality assurance, from business understanding to monitoring and maintenance (Studer et al., 2021).</li>
+      </ul>
+
+      <h4 class="h6 fw-bold">Relation with the project</h4>
+      <p class="mb-0">The studies support the design: a logistic regression baseline compared with two ensembles, results published in read-only pages, explainability limited to what the model really shows, and a human analyst who justifies each decision. The experiments of the project agree with the literature: the three models are within 0.009 of ROC AUC of each other on cross-validation, a small difference that is typical of tabular credit data. The champion was not the model with the highest AUC but the simplest one among the tied models, according to the rule defined before training.</p>
     </article>
 
-    <p class="text-center mb-0">
-      <a class="btn btn-outline-primary" href="{{ url_for('main.resources') }}">Report, repository, manuals and video</a>
-    </p>
+    <article class="mb-5" id="pgc-methodology">
+      <h3 class="h4 fw-bold">6. Methodology and development schedule</h3>
+
+      <h4 class="h6 fw-bold">The six CRISP-ML(Q) phases as applied</h4>
+      <ol class="pgc-phases">
+        <li><a href="{{ url_for('methodology.phase', number=1) }}">Business and data understanding.</a> Problem, stakeholders, dataset (Kaggle, CC0), success criteria fixed before training (CV ROC AUC &ge; 0.70, recall &ge; 0.60, gap with the test split &le; 0.02). No domain expert was consulted; this is declared as a limitation.</li>
+        <li><a href="{{ url_for('methodology.phase', number=2) }}">Data engineering.</a> Validation, cleaning, 80/20 stratified split, features of the champion pipeline, and exploration with PCA and t-SNE. With nearly uncorrelated variables, PCA found nothing to compress and reducing to two components dropped the CV ROC AUC from 0.711 to 0.532.</li>
+        <li><a href="{{ url_for('methodology.phase', number=3) }}">Model engineering.</a> Three models, randomized search, 5-fold cross-validation, the champion rule (highest mean ROC AUC; models less than 0.01 apart are tied and the highest recall wins) and an unsupervised clustering analysis. K-Means, DBSCAN and agglomerative clustering found the same four groups, which only reproduce the employment types and separate the real default rate weakly.</li>
+        <li><a href="{{ url_for('methodology.phase', number=4) }}">Model evaluation.</a> Test metrics reported once; no overfitting beyond the threshold; the champion is the logistic regression (test ROC AUC 0.718, recall 0.674), although XGBoost has the highest AUC.</li>
+        <li><a href="{{ url_for('methodology.phase', number=5) }}">Deployment.</a> The champion is served by a Flask application on Render with PostgreSQL. The age finding was handled with a mandatory human review for applicants aged 18 to 24 and for High Risk results, and the model without age was tested and rejected (CV ROC AUC 0.652).</li>
+        <li><a href="{{ url_for('methodology.phase', number=6) }}">Monitoring and maintenance.</a> Logs of errors and response times, population stability (PSI) against the training distribution, real AUC and recall when outcomes exist, versioned artifacts and a retraining rule.</li>
+      </ol>
+
+      <h4 class="h6 fw-bold">Development and integration of the web system</h4>
+      <p>The system was built in iterations (Scrum), with one branch and one reviewed pull request per block, automated tests and continuous integration on SQLite and PostgreSQL. Training is offline (<code>python -m ml.train</code>) and writes versioned artifacts; the web application only reads them. Both sides share three contracts: the feature adapter, <code>metrics.json</code> and <code>manifest.json</code>. The server applies the same preprocessing as the training and scores every request, so the browser never holds the model. The request flow is: the applicant creates a request, pre-filled from their finances; the champion scores it; the analyst reviews it (mandatory for High Risk or ages 18 to 24) and approves, rejects or requests documents with a reason; the applicant sees the status; later the real outcome (repaid or defaulted) is recorded.</p>
+
+      <h4 class="h6 fw-bold">Schedule: planned and actual</h4>
+      <p>Dates come from the Git history of the repository (Colombia time). The planned dates come from the sprint plan (10 November 2026, one week) and from the deadlines of each activity.</p>
+      <div class="table-responsive">
+        <table class="table pgc-table" data-testid="schedule">
+          <thead><tr><th>Activity</th><th>Responsible</th><th>Planned</th><th>Actual</th><th>Deliverable</th></tr></thead>
+          <tbody>
+            <tr><td>Application base, authentication and database (before Activity 1)</td><td>Cristhian Aza; Harrison Camargo (first tables); Alejandro Alarcon (authentication)</td><td>Early November</td><td>23 Oct to 8 Nov</td><td>Flask application, database models, login, migrations</td></tr>
+            <tr><td>Random forest and XGBoost scripts</td><td>Harrison Camargo; Alejandro Alarcon</td><td>Week of 10 Nov (sprint plan)</td><td>12 Nov</td><td>Two model pipelines, integrated into the common training by Cristhian Aza</td></tr>
+            <tr><td>Activity 1: data, three models, champion, methodology pages, deployment</td><td>Cristhian Aza</td><td>From 10 Nov, one-week plan</td><td>13 Nov; deployment files 13 Nov</td><td>Models and metrics, six phase pages, PCA notebook, Render blueprint, technical report</td></tr>
+            <tr><td>Activity 2: roles, menus, request flow, indicators, monitoring</td><td>Cristhian Aza</td><td>24 hours from 14 Nov, 12:00</td><td>14 to 15 Nov</td><td>Three roles, statuses, analyst review, inference log, indicators, reports, report of Activity 2</td></tr>
+            <tr><td>Activity 2: database description</td><td>Harrison Camargo</td><td>15 Nov</td><td>15 Nov (initial tables only; completed by the lead)</td><td>Database document</td></tr>
+            <tr><td>Activity 2: user manual and role tests</td><td>Alejandro Alarcon</td><td>15 Nov</td><td>15 Nov (manual for the earlier system; screenshots updated by the lead)</td><td>User manual, role test on the published site</td></tr>
+            <tr><td>Activity 2: clustering analysis and PSI from the database</td><td>Cristhian Aza</td><td>Not planned</td><td>15 Nov</td><td>Clustering notebook and report, PSI from the database</td></tr>
+            <tr><td>Activity 3: complete documentation, resources, visual polish, sample data, reinforcement learning blog, final report</td><td>Cristhian Aza, with the team</td><td>16 Nov, 11:59 p.m.</td><td>16 Nov</td><td>This page, final report, blog, README, 20-minute video</td></tr>
+            <tr><td>Activity 3: 20-minute video</td><td>The three members, equal parts</td><td>16 Nov, 11:59 p.m.</td><td>See the video link on this page</td><td>Recorded video in English</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small text-muted mb-0">Deviations: the clustering analysis was not in the plan and was added during Activity 2; the documents of the teammates were shorter than planned and were completed by the project lead, as the final report states.</p>
+    </article>
+
+    <article class="mb-5" id="pgc-results">
+      <h3 class="h4 fw-bold">Results and decisions of the finished project</h3>
+      <ul class="mb-0">
+        <li><strong>Champion by tie rule.</strong> Logistic regression (mean CV ROC AUC 0.711, recall 0.664). XGBoost (0.720) and random forest (0.716) are within 0.01 (0.009 and 0.005) of the best, so the rule picks the simplest with higher recall; the success criteria were all met.</li>
+        <li><strong>Age and human review.</strong> The model flags 85% of the applicants aged 18 to 24. Removing age lowered the ROC AUC to 0.652, so age stays and human review is mandatory for that group.</li>
+        <li><strong>No domain expert.</strong> No expert reviewed the work; the conclusions about business value are therefore expected, not demonstrated.</li>
+        <li><strong>PCA and clustering.</strong> Neither improves the model: PCA discards signal, and the clusters are the employment types. They are published as evidence, not used in production.</li>
+        <li><strong>Operations.</strong> Every inference is logged with its time and model version; monitoring and indicators are in the private area (administrator and analyst).</li>
+      </ul>
+    </article>
+
+    <article class="mb-5" id="pgc-references">
+      <h3 class="h4 fw-bold">7. Bibliographic references</h3>
+      <p class="apa-reference">Basel Committee on Banking Supervision. (2017). <em>Basel III: Finalising post-crisis reforms</em>. Bank for International Settlements. <a href="https://www.bis.org/bcbs/publ/d424.htm">https://www.bis.org/bcbs/publ/d424.htm</a></p>
+      <p class="apa-reference">Bussmann, N., Giudici, P., Marinelli, D., &amp; Papenbrock, J. (2021). Explainable machine learning in credit risk management. <em>Computational Economics, 57</em>(1), 203&ndash;216. <a href="https://doi.org/10.1007/s10614-020-10042-0">https://doi.org/10.1007/s10614-020-10042-0</a></p>
+      <p class="apa-reference">Chen, T., &amp; Guestrin, C. (2016). XGBoost: A scalable tree boosting system. In <em>Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</em> (pp. 785&ndash;794). ACM. <a href="https://doi.org/10.1145/2939672.2939785">https://doi.org/10.1145/2939672.2939785</a></p>
+      <p class="apa-reference">Dastile, X., Celik, T., &amp; Potsane, M. (2020). Statistical and machine learning models in credit scoring: A systematic literature survey. <em>Applied Soft Computing, 91</em>, Article 106263. <a href="https://doi.org/10.1016/j.asoc.2020.106263">https://doi.org/10.1016/j.asoc.2020.106263</a></p>
+      <p class="apa-reference">Gunnarsson, B. R., vanden Broucke, S., Baesens, B., &Oacute;skarsd&oacute;ttir, M., &amp; Lemahieu, W. (2021). Deep learning for credit scoring: Do or don&rsquo;t? <em>European Journal of Operational Research, 295</em>(1), 292&ndash;305. <a href="https://doi.org/10.1016/j.ejor.2021.03.006">https://doi.org/10.1016/j.ejor.2021.03.006</a></p>
+      <p class="apa-reference">Jolliffe, I. T., &amp; Cadima, J. (2016). Principal component analysis: A review and recent developments. <em>Philosophical Transactions of the Royal Society A, 374</em>(2065), Article 20150202. <a href="https://doi.org/10.1098/rsta.2015.0202">https://doi.org/10.1098/rsta.2015.0202</a></p>
+      <p class="apa-reference">Lessmann, S., Baesens, B., Seow, H.-V., &amp; Thomas, L. C. (2015). Benchmarking state-of-the-art classification algorithms for credit scoring: An update of research. <em>European Journal of Operational Research, 247</em>(1), 124&ndash;136. <a href="https://doi.org/10.1016/j.ejor.2015.05.030">https://doi.org/10.1016/j.ejor.2015.05.030</a></p>
+      <p class="apa-reference">Nikhil1e9. (n.d.). <em>Loan default prediction dataset</em> [Data set]. Kaggle. <a href="https://www.kaggle.com/datasets/nikhil1e9/loan-default">https://www.kaggle.com/datasets/nikhil1e9/loan-default</a></p>
+      <p class="apa-reference">Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. <em>Journal of Computational and Applied Mathematics, 20</em>, 53&ndash;65. <a href="https://doi.org/10.1016/0377-0427(87)90125-7">https://doi.org/10.1016/0377-0427(87)90125-7</a></p>
+      <p class="apa-reference mb-0">Studer, S., Bui, T. B., Drescher, C., Hanuschkin, A., Winkler, L., Peters, S., &amp; M&uuml;ller, K.-R. (2021). Towards CRISP-ML(Q): A machine learning process model with quality assurance methodology. <em>Machine Learning and Knowledge Extraction, 3</em>(2), 392&ndash;413. <a href="https://doi.org/10.3390/make3020020">https://doi.org/10.3390/make3020020</a></p>
+    </article>
   </div>
 </section>

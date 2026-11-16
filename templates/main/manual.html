@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}User Manual | Credit Risk{% endblock %}
+{% block content %}
+<section class="py-5">
+  <div class="container manual-page">
+    <p class="mb-2"><a href="{{ url_for('main.resources') }}">&larr; Resources</a></p>
+    <h1 class="h2 fw-bold mb-4">{{ title }}</h1>
+    {{ html }}
+  </div>
+</section>
+{% endblock %}

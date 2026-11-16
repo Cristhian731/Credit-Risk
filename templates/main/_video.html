@@ -1,0 +1,10 @@
+{# Project video: embedded when VIDEO_URL is a YouTube or Vimeo link, else a link or a pending note. #}
+{% if video.embed %}
+  <div class="ratio ratio-16x9 video-frame" data-testid="video-embed">
+    <iframe src="{{ video.embed }}" title="Project video" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+  </div>
+{% elif video.link %}
+  <p class="mb-0" data-testid="video-link"><a class="btn btn-primary" href="{{ video.link }}" rel="noopener">Watch the project video</a></p>
+{% else %}
+  <p class="text-muted mb-0" data-testid="video-pending">Video: link pending</p>
+{% endif %}

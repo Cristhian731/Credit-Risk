@@ -202,3 +202,73 @@ a:focus-visible, .btn:focus-visible, .form-control:focus, .form-select:focus, .f
     padding-top: 8px;
   }
 }
+
+/* Home: documentation (PGC), quick access, video and manual */
+.pgc-doc { max-width: 960px; }
+.pgc-doc article { scroll-margin-top: 80px; }
+.pgc-doc h4 { margin-top: 1.25rem; }
+.pgc-toc ol { columns: 2; column-gap: 2rem; }
+.pgc-table { background: #fff; font-size: .9rem; }
+.pgc-table th { white-space: nowrap; }
+.video-frame { border-radius: 8px; overflow: hidden; }
+.manual-page { max-width: 820px; }
+.manual-figure { display: block; margin: 1rem 0 .5rem; }
+.resource-card { position: relative; }
+@media (max-width: 575px) { .pgc-toc ol { columns: 1; } }
+
+/* Visual polish: spacing, type scale, cards, tables and small screens (same inside and outside the login) */
+body { line-height: 1.6; }
+h1 { font-weight: 700; }
+h2, .h2 { font-weight: 700; }
+h3, .h3, h4, .h4, h5, .h5, h6, .h6 { font-weight: 600; }
+p, li { max-width: 75ch; }
+.text-center p, .card p, td p, th p, .hero p, .table li, .pgc-table p { max-width: none; }
+
+/* Page titles: one style for every page */
+section h1.h3, section h1.h2, .app-main h1 {
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.25rem !important;
+  border-bottom: 3px solid var(--cr-teal);
+  display: inline-block;
+}
+
+/* Cards: even padding, clickable cards react to the pointer */
+.card h5, .card h4, .card .h5, .card .h6 { margin-bottom: 0.5rem; }
+a.card { color: inherit; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+a.card:hover, .resource-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--cr-teal);
+  box-shadow: 0 6px 18px rgba(11, 37, 69, 0.12);
+}
+.resource-card { transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.resource-card { display: flex; flex-direction: column; }
+.quick-access .card strong { color: var(--cr-navy); }
+
+/* Tables: zebra rows, comfortable cells, never wider than the screen */
+.table { --bs-table-striped-bg: var(--cr-soft); }
+.table > :not(caption) > * > * { padding: 0.65rem 0.75rem; vertical-align: middle; }
+.table tbody tr:hover { background: rgba(15, 139, 141, 0.06); }
+.table-responsive { border: 1px solid var(--cr-border); border-radius: 0.5rem; background: #fff; }
+.table-responsive > .table { margin-bottom: 0; }
+
+/* Forms */
+.form-label { font-weight: 600; color: var(--cr-navy); }
+.form-control, .form-select { border-color: #c7d0da; padding: 0.55rem 0.75rem; }
+.form-text, .text-muted { color: #5b6773 !important; }
+
+/* Sections of the public pages: vertical rhythm */
+section.py-5 { padding-top: 3.5rem !important; padding-bottom: 3.5rem !important; }
+.footer-gap, .site-footer { margin-top: auto; }
+.site-footer { padding: 1.25rem 0; font-size: 0.9rem; }
+
+/* Alerts and badges */
+.alert { border-radius: 0.6rem; }
+.badge { font-weight: 600; letter-spacing: 0.02em; }
+
+@media (max-width: 767px) {
+  .hero { padding: 48px 0; }
+  .hero h1 { font-size: 2rem; }
+  section.py-5 { padding-top: 2.25rem !important; padding-bottom: 2.25rem !important; }
+  .table { font-size: 0.875rem; }
+  .app-main { padding-left: 0; padding-right: 0; }
+}

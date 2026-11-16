@@ -76,10 +76,9 @@ def test_base_layout_shows_navigation(client, demo_user):
     html = client.get("/").get_data(as_text=True)
 
     for anchor in (
-        "problem",
-        "objective",
+        "pgc",
+        "video",
         "how-it-works",
-        "technologies",
         "login",
     ):
         assert f'href="/#{anchor}"' in html
