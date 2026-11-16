@@ -166,7 +166,11 @@ def test_report_figures_exist_and_have_no_tool_metadata():
         with open(path, "rb") as fh:
             data = fh.read()
         assert data.startswith(b"\x89PNG") and b"Matplotlib" not in data and b"Software" not in data
-    assert set(os.listdir(FIGURE_DIR)) == {os.path.basename(f) for f in report["figures"]}
+    expected = {os.path.basename(f) for f in report["figures"]}
+    clustering = os.path.join(ARTIFACTS_DIR, "clustering_report.json")
+    if os.path.exists(clustering):  # the clustering notebook saves its figures in the same folder
+        expected |= {os.path.basename(f) for f in load_json(clustering)["figures"]}
+    assert set(os.listdir(FIGURE_DIR)) == expected
 
 
 def test_validator_rejects_malformed_reports():

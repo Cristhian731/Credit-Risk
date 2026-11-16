@@ -67,6 +67,8 @@ OVERFITTING_FILENAME = "overfitting.json"
 SUBGROUPS_FILENAME = "subgroups.json"
 # Written by notebooks/credit_risk_dimensionality.ipynb, not by ml.train.
 DIMENSIONALITY_REPORT_FILENAME = "dimensionality_report.json"
+# Written by notebooks/credit_risk_clustering.ipynb.
+CLUSTERING_REPORT_FILENAME = "clustering_report.json"
 # Written by ml.monitor: the train distribution used as reference, and the report of a batch.
 REFERENCE_DISTRIBUTION_FILENAME = "reference_distribution.json"
 MONITORING_REPORT_FILENAME = "monitoring_report.json"
@@ -391,6 +393,101 @@ def validate_subgroups(subgroups):
     return errors
 
 
+CLUSTERING_TECHNIQUES = ("kmeans", "dbscan", "agglomerative")
+
+
+def validate_clustering_report(report):
+    """Validate clustering_report.json (written by the clustering notebook).
+
+    Format::
+
+        {
+          "artifacts_version": "2026-11-13.1", "champion": "logistic_regression",
+          "dataset": {"sha256": "<64 hex>", "train_rows": int},
+          "protocol": {"data": str, "random_state": 42, "preprocessing": str, "sample_rows": int, "label_usage": str},
+          "independence": {"max_feature_correlation": number},
+          "base_default_rate": number, "model_cv_roc_auc": number,
+          "kmeans": {"k_candidates": [{"k", "inertia", "silhouette"}], "chosen_k": int, "rule": str},
+          "dbscan": {"min_samples": int, "eps": number, "n_clusters": int, "noise_share": number},
+          "agglomerative": {"linkage": str, "n_clusters": int},
+          "comparison": {technique: {"rows_evaluated", "n_clusters", "silhouette", "davies_bouldin",
+                                     "calinski_harabasz"}},           # metrics are null with fewer than 2 clusters
+          "clusters": {technique: [{"cluster", "size", "share", "default_rate", "means": {feature: number},
+                                    "main_employment_type"}]},        # cluster -1 is DBSCAN noise
+          "risk_separation": {technique: {"default_rate_min", "default_rate_max", "spread", "cluster_roc_auc"}},
+          "employment_alignment": {technique: adjusted Rand index with EmploymentType},
+          "numeric_only": {"columns": [...], "k_candidates": [...], "chosen_k": int, "best_silhouette": number,
+                           "risk_separation": {...}, "employment_alignment": number},
+          "interpretation": [str, ...], "figures": ["methodology/clustering_*.png", ...]
+        }
+    """
+    top = ("artifacts_version", "champion", "dataset", "protocol", "independence", "base_default_rate",
+           "model_cv_roc_auc", "kmeans", "dbscan", "agglomerative", "comparison", "clusters",
+           "risk_separation", "employment_alignment", "numeric_only", "interpretation", "figures")
+    errors = _check_keys(report, top, "clustering_report")
+    if errors:
+        return errors
+    if report["champion"] not in MODEL_NAMES:
+        errors.append("clustering_report.champion must be one of the model names")
+    errors += _check_keys(report["dataset"], ("sha256", "train_rows"), "clustering_report.dataset")
+    errors += _check_keys(report["protocol"],
+                          ("data", "random_state", "preprocessing", "sample_rows", "label_usage"),
+                          "clustering_report.protocol")
+    errors += _check_keys(report["independence"], ("max_feature_correlation",), "clustering_report.independence")
+    errors += _check_keys(report["kmeans"], ("k_candidates", "chosen_k", "rule"), "clustering_report.kmeans")
+    errors += _check_keys(report["dbscan"], ("min_samples", "eps", "n_clusters", "noise_share"),
+                          "clustering_report.dbscan")
+    errors += _check_keys(report["agglomerative"], ("linkage", "n_clusters"), "clustering_report.agglomerative")
+    if errors:
+        return errors
+
+    candidates = report["kmeans"]["k_candidates"]
+    if not isinstance(candidates, list) or not candidates:
+        errors.append("clustering_report.kmeans.k_candidates must be a non-empty list")
+    else:
+        for item in candidates:
+            errors += _check_keys(item, ("k", "inertia", "silhouette"), "kmeans.k_candidates item")
+        if report["kmeans"]["chosen_k"] not in [item.get("k") for item in candidates if isinstance(item, dict)]:
+            errors.append("clustering_report.kmeans.chosen_k must be one of the k candidates")
+
+    for name in ("comparison", "clusters", "risk_separation"):
+        if not isinstance(report[name], dict) or set(report[name]) != set(CLUSTERING_TECHNIQUES):
+            errors.append(f"clustering_report.{name} must have exactly the techniques {CLUSTERING_TECHNIQUES}")
+    if errors:
+        return errors
+
+    for technique in CLUSTERING_TECHNIQUES:
+        errors += _check_keys(report["comparison"][technique],
+                              ("rows_evaluated", "n_clusters", "silhouette", "davies_bouldin", "calinski_harabasz"),
+                              f"comparison.{technique}")
+        errors += _check_keys(report["risk_separation"][technique],
+                              ("default_rate_min", "default_rate_max", "spread", "cluster_roc_auc"),
+                              f"risk_separation.{technique}")
+        rows = report["clusters"][technique]
+        if not isinstance(rows, list) or not rows:
+            errors.append(f"clustering_report.clusters.{technique} must be a non-empty list")
+            continue
+        for row in rows:
+            errors += _check_keys(row, ("cluster", "size", "share", "default_rate", "means", "main_employment_type"),
+                                  f"clusters.{technique} item")
+        total = sum(row.get("share", 0) for row in rows if isinstance(row, dict))
+        if abs(total - 1) > 0.01:
+            errors.append(f"clusters.{technique} shares must add up to 1, got {total:.4f}")
+        if technique != "dbscan" and any(row.get("cluster") == -1 for row in rows if isinstance(row, dict)):
+            errors.append(f"clusters.{technique} cannot have a noise cluster (-1)")
+
+    if not isinstance(report["employment_alignment"], dict) or set(report["employment_alignment"]) != set(CLUSTERING_TECHNIQUES):
+        errors.append("clustering_report.employment_alignment must have exactly the techniques")
+    errors += _check_keys(report["numeric_only"], ("columns", "k_candidates", "chosen_k", "best_silhouette",
+                                                  "risk_separation", "employment_alignment"),
+                          "clustering_report.numeric_only")
+    if not isinstance(report["interpretation"], list) or not report["interpretation"]:
+        errors.append("clustering_report.interpretation must be a non-empty list")
+    if not isinstance(report["figures"], list) or not report["figures"]:
+        errors.append("clustering_report.figures must be a non-empty list")
+    return errors
+
+
 def validate_dimensionality_report(report):
     """Validate dimensionality_report.json (written by the dimensionality notebook).
 
@@ -633,6 +730,7 @@ def validate_artifacts(directory, require_models=False):
     # Optional: produced by the notebook and by ml.monitor, validated when present.
     optional = (
         (DIMENSIONALITY_REPORT_FILENAME, validate_dimensionality_report),
+        (CLUSTERING_REPORT_FILENAME, validate_clustering_report),
         (REFERENCE_DISTRIBUTION_FILENAME, validate_reference_distribution),
         (MONITORING_REPORT_FILENAME, validate_monitoring_report),
     )

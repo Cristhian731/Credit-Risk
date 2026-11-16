@@ -16,6 +16,7 @@ must be reviewed before any real use.
 | **Published application** | <https://credit-risk-dxit.onrender.com> (free Render plan: the first request after 15 minutes of inactivity takes about 1-1.5 minutes) |
 | **Demo account** | `demo@creditrisk.local` and the password shown on the public Methodology overview (`DEMO_PASSWORD`) |
 | **Notebook (Google Colab)** | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Cristhian731/Credit-Risk/blob/main/notebooks/credit_risk_dimensionality.ipynb) |
+| **Clustering notebook (Google Colab)** | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Cristhian731/Credit-Risk/blob/main/notebooks/credit_risk_clustering.ipynb): K-Means, DBSCAN and Agglomerative Clustering on the train split; writes `ml/artifacts/clustering_report.json` |
 | **Methodology (no login)** | `/methodology/`: overview and one page for each CRISP-ML phase |
 
 ## What is built
@@ -164,6 +165,8 @@ wrong role it answers a 403 page. The menus of each role are listed in `app/menu
 | `flask --app run adopt-legacy-db OLD NEW` | Move a database created before migrations existed (see [docs/MIGRATIONS.md](docs/MIGRATIONS.md)) |
 
 ## Configuration
+
+[`.env.example`](.env.example) lists every variable with an EXAMPLE value and no secret; copy it to `.env` (ignored by git) or set the same variables in the host (the application does not load `.env` by itself).
 
 | Variable | Purpose | Default |
 |---|---|---|
