@@ -38,3 +38,10 @@ def test_reference_framework_document_is_written():
     text = open("docs/pgc/reference_framework.md", encoding="utf-8").read()
     assert "> Guide:" not in text
     assert "Lessmann" in text and "Key concepts" in text
+
+
+def test_home_uses_the_local_evidence_of_the_problem_with_attribution_and_sources(home):
+    assert "3.8%" in home and "5% for consumer loans" in home
+    assert "Harrison Camargo" in home and "docs/pgc/problem_evidence.md" in home
+    for author in ("Banco de la Rep", "El Colombiano. (2026, June 2)", "Superintendencia Financiera de Colombia. (2026, February 20)"):
+        assert author in home
