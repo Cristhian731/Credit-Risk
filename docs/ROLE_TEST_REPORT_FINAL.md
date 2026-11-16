@@ -8,15 +8,15 @@ Three accounts were used, one per role. Passwords are not written in this docume
 
 | Account | Role | Lands on after login |
 | --- | --- | --- |
-| `alejo` | Applicant | `/dashboard/` |
-| `mariana` | Analyst | `/reviews/` (Review queue) |
-| `admin` | Administrator | `/admin/` (Users and roles) |
+| Account A | Applicant | `/dashboard/` |
+| Account B | Analyst | `/reviews/` (Review queue) |
+| Account C | Administrator | `/admin/` (Users and roles) |
 
 **Expected** comes from the access rules in the code (`roles_required` in each route). **Result** is what was observed on the published site: Allowed, 403 or Redirected to login. A role that opens a page it should not see gets the 403 page.
 
 ## What each role can and cannot do
 
-| Action | Page | Applicant (`alejo`) | Analyst (`mariana`) | Administrator (`admin`) |
+| Action | Page | Applicant (Account A) | Analyst (Account B) | Administrator (Account C) |
 | --- | --- | --- | --- | --- |
 | Record income and expenses | `/transactions/` | Expected: Allowed. Result: [✅] | Expected: 403. Result: [✅] | Expected: 403. Result: [✅] |
 | Create a credit request | `/credit/` | Expected: Allowed. Result: [✅] | Expected: 403. Result: [✅] | Expected: 403. Result: [✅] |
@@ -44,10 +44,10 @@ Three accounts were used, one per role. Passwords are not written in this docume
 | Test | Expected | Result |
 | --- | --- | --- |
 | Logged out, open `/dashboard/` | Redirected to login | [✅] |
-| As `alejo`, type `/admin/` in the address bar | 403 | [✅] |
-| As `alejo`, type `/reviews/` in the address bar | 403 | [✅] |
-| As `mariana`, type `/credit/` in the address bar | 403 | [✅] |
-| As `admin`, type `/credit/` in the address bar | 403 | [✅] |
+| As Account A, type `/admin/` in the address bar | 403 | [✅] |
+| As Account A, type `/reviews/` in the address bar | 403 | [✅] |
+| As Account B, type `/credit/` in the address bar | 403 | [✅] |
+| As Account C, type `/credit/` in the address bar | 403 | [✅] |
 
 ## Observations
 
