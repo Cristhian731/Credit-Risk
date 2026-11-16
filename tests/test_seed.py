@@ -93,3 +93,29 @@ def test_sample_data_is_not_added_when_the_demo_account_has_transactions(app):
     first = Transaction.query.count()
     run_seed(app)
     assert Transaction.query.count() == first
+
+
+def test_sample_finances_are_added_when_only_older_transactions_exist(app):
+    from datetime import date
+    from app.seed import ensure_demo_user
+
+    demo, _ = ensure_demo_user("x" * 12)
+    repository.save_transaction(
+        {"type": "income", "amount": 1, "date": date(2024, 1, 5), "category": "Old", "description": "old", "user_id": demo.id}
+    )
+    result = run_seed(app)
+    assert result.exit_code == 0, result.output
+    assert f"Sample transactions added: {len(demo_transactions())}" in result.output
+    summary = repository.finance_summary_for_credit(demo.id)
+    assert str(summary["monthly_income"]) == "4200.00"
+    assert round(float(summary["dti_percent"]), 1) == 14.3
+    again = run_seed(app)
+    assert "Sample transactions added: 0" in again.output
+    assert Transaction.query.count() == len(demo_transactions()) + 1
+
+
+def test_credit_form_of_the_demo_account_is_prefilled_after_the_seed(app, client):
+    run_seed(app)
+    html = client.get("/credit/?source=finance").get_data(as_text=True)
+    assert 'value="4200.00"' in html
+    assert 'value="14.3"' in html

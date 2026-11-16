@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from .auth.services import DEMO_EMAIL, DEMO_USERNAME, get_demo_user
 from .extensions import db
-from .models import User
+from .models import Transaction, User
 from .services import repository
 
 SAMPLE_LABEL = "Sample data"
@@ -77,14 +77,35 @@ def ensure_demo_user(password=None):
     return user, True
 
 
-def seed_demo(password=None):
-    """Create the demo user and, if it has no transactions yet, the sample ones.
+def _has_income_in_sample_months(user_id, today=None):
+    """True if the user has any income in the last SAMPLE_MONTHS complete months before ``today``."""
+    months = {(row["date"].year, row["date"].month) for row in demo_transactions(today)}
+    first = min(months)
+    today = today or date.today()
+    start = date(first[0], first[1], 1)
+    end = today.replace(day=1)
+    return db.session.execute(
+        db.select(Transaction.id)
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.type == "income",
+            Transaction.date >= start,
+            Transaction.date < end,
+        )
+        .limit(1)
+    ).first() is not None
 
-    Running it again never duplicates data. Returns what it did.
+
+def seed_demo(password=None):
+    """Create the demo user and, if it has no income in the last 3 complete months, the sample finances.
+
+    The sample data are added even when the account has other (older) transactions, so the credit
+    form can be prefilled. Running it again never duplicates them, because they create that income.
+    Returns what it did.
     """
     user, created = ensure_demo_user(password)
     added = 0
-    if not repository.list_transactions(user.id):
+    if not _has_income_in_sample_months(user.id):
         for transaction in demo_transactions():
             repository.save_transaction({**transaction, "user_id": user.id})
             added += 1
