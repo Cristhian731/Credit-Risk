@@ -3,7 +3,7 @@ import pytest
 
 from app.auth.services import DEMO_EMAIL, DEMO_USERNAME, register_user
 from app.models import Category, Transaction, User
-from app.seed import DEMO_TRANSACTIONS
+from app.seed import SAMPLE_LABEL, demo_transactions
 from app.services import repository
 
 
@@ -20,12 +20,12 @@ def test_seed_demo_creates_the_demo_user_and_sample_transactions(app):
     result = run_seed(app)
     assert result.exit_code == 0, result.output
     assert "Demo user created." in result.output
-    assert f"Sample transactions added: {len(DEMO_TRANSACTIONS)}" in result.output
+    assert f"Sample transactions added: {len(demo_transactions())}" in result.output
 
     demo = User.query.filter_by(email=DEMO_EMAIL).one()
     assert demo.username == DEMO_USERNAME
-    assert len(repository.list_transactions(demo.id)) == len(DEMO_TRANSACTIONS)
-    assert {c.name for c in Category.query.all()} == {"Salary", "Housing", "Food"}
+    assert len(repository.list_transactions(demo.id)) == len(demo_transactions())
+    assert {c.name for c in Category.query.all()} == {"Salary", "Housing", "Food", "Loan payment"}
 
 
 def test_seed_demo_can_run_again_without_duplicating_anything(app):
@@ -35,7 +35,7 @@ def test_seed_demo_can_run_again_without_duplicating_anything(app):
     assert "Demo user already exists." in result.output
     assert "Sample transactions added: 0" in result.output
     assert User.query.count() == 1
-    assert Transaction.query.count() == len(DEMO_TRANSACTIONS)
+    assert Transaction.query.count() == len(demo_transactions())
 
 
 def test_seed_demo_does_not_touch_real_users(app):
@@ -69,8 +69,27 @@ def test_demo_mode_shows_the_seeded_data_and_only_that(app, client):
     run_seed(app)
     real = register_user("ana", "ana@example.com", "a-long-password")
     repository.save_transaction(
-        {"type": "income", "amount": 1, "date": DEMO_TRANSACTIONS[0]["date"], "category": "Mine", "description": "", "user_id": real.id}
+        {"type": "income", "amount": 1, "date": demo_transactions()[0]["date"], "category": "Mine", "description": "", "user_id": real.id}
     )
     html = client.get("/transactions/").get_data(as_text=True)
-    assert "Monthly salary" in html
+    assert "Sample data: Monthly salary" in html
     assert "Mine" not in html  # the first real user does not share the demo user's data
+
+
+def test_sample_data_is_labeled_and_fills_the_credit_form(app):
+    run_seed(app)
+    demo = User.query.filter_by(email=DEMO_EMAIL).one()
+    rows = repository.list_transactions(demo.id)
+    assert rows and all(SAMPLE_LABEL in row["description"] for row in rows)
+    summary = repository.finance_summary_for_credit(demo.id)
+    assert len(summary["months"]) == 3
+    assert str(summary["monthly_income"]) == "4200.00"
+    assert str(summary["debt_monthly"]) == "600.00"
+    assert round(float(summary["dti_percent"]), 1) == 14.3
+
+
+def test_sample_data_is_not_added_when_the_demo_account_has_transactions(app):
+    run_seed(app)
+    first = Transaction.query.count()
+    run_seed(app)
+    assert Transaction.query.count() == first

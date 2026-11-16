@@ -5,7 +5,7 @@ from html.parser import HTMLParser
 
 import pytest
 
-SECTION_IDS = ["problem", "objective", "how-it-works", "benefits", "technologies"]
+SECTION_IDS = ["pgc", "video", "how-it-works", "technologies"]
 
 
 class _FormParser(HTMLParser):
@@ -54,10 +54,9 @@ def test_home_page_has_every_section(home_html):
         assert f'id="{section}"' in home_html
 
     for title in (
-        "The Problem",
-        "Project Objective",
+        "Project Documentation (PGC)",
+        "Project video",
         "How the Platform Works",
-        "Benefits",
         "Technologies &amp; Methodology",
     ):
         assert title in home_html
@@ -78,10 +77,9 @@ def test_hero_button_scrolls_to_login(home_html):
 
 def test_navbar_anchors_point_to_existing_sections(home_html):
     for anchor in (
-        "problem",
-        "objective",
+        "pgc",
+        "video",
         "how-it-works",
-        "technologies",
         "login",
     ):
         assert f'href="/#{anchor}"' in home_html
