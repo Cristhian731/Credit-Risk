@@ -33,33 +33,27 @@
   </div>
 </section>
 
-{% include "main/_pgc.html" %}
-
-<section class="py-5" id="problem">
+<section class="py-4 quick-access" id="access">
   <div class="container">
-    <h2 class="text-center fw-bold mb-4">The Problem</h2>
-    <div class="row g-4">
-      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Too Much Information</h5>
-        <p class="mb-0">Financial institutions handle large amounts of customer data in each credit application.</p></div></div>
-      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Costly Mistakes</h5>
-        <p class="mb-0">Incorrect decisions can lead to financial losses and higher default rates.</p></div></div>
-      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>Slow Processes</h5>
-        <p class="mb-0">Traditional evaluation is often manual, slow, and inefficient.</p></div></div>
-      <div class="col-md-6 col-lg-3"><div class="card h-100 p-3"><h5>A Data-Driven Solution</h5>
-        <p class="mb-0">Machine learning supports faster and more accurate decision-making.</p></div></div>
+    <div class="row g-3 text-center" data-testid="quick-access">
+      <div class="col-6 col-md"><a class="card p-3 h-100 text-decoration-none" href="#pgc"><strong>Documentation</strong><span class="small text-muted">Project plan (PGC)</span></a></div>
+      <div class="col-6 col-md"><a class="card p-3 h-100 text-decoration-none" href="{{ final_report or url_for('main.resources') }}"><strong>Technical report</strong><span class="small text-muted">Final PDF</span></a></div>
+      <div class="col-6 col-md"><a class="card p-3 h-100 text-decoration-none" href="{{ url_for('methodology.overview') }}"><strong>CRISP-ML evidence</strong><span class="small text-muted">Six phases</span></a></div>
+      <div class="col-6 col-md"><a class="card p-3 h-100 text-decoration-none" href="https://github.com/Cristhian731/Credit-Risk" rel="noopener"><strong>Repository</strong><span class="small text-muted">Code and README</span></a></div>
+      <div class="col-6 col-md"><a class="card p-3 h-100 text-decoration-none" href="{{ url_for('main.manual') }}"><strong>User manual</strong><span class="small text-muted">Web page</span></a></div>
+      <div class="col-6 col-md"><a class="card p-3 h-100 text-decoration-none" href="#video"><strong>Video</strong><span class="small text-muted">20 minutes</span></a></div>
     </div>
   </div>
 </section>
 
-<section class="py-5 bg-soft text-center" id="objective">
-  <div class="container">
-    <h2 class="fw-bold mb-3">Project Objective</h2>
-    <p class="fs-4 fst-italic mx-auto" style="max-width:800px">
-      Develop a web-based machine learning platform capable of predicting loan viability using customer
-      financial and demographic information.
-    </p>
+<section class="py-5" id="video">
+  <div class="container" style="max-width: 860px">
+    <h2 class="text-center fw-bold mb-3">Project video</h2>
+    {% include "main/_video.html" %}
   </div>
 </section>
+
+{% include "main/_pgc.html" %}
 
 <section class="py-5" id="how-it-works">
   <div class="container">
@@ -73,20 +67,6 @@
         <p><span class="badge text-bg-success">Approved</span>
            <span class="badge text-bg-warning">Medium Risk</span>
            <span class="badge text-bg-danger">High Risk</span></p></div>
-    </div>
-  </div>
-</section>
-
-<section class="py-5 bg-soft" id="benefits">
-  <div class="container">
-    <h2 class="text-center fw-bold mb-4">Benefits</h2>
-    <div class="row g-4">
-      <div class="col-md-6"><div class="card h-100 p-4"><h4>For Financial Institutions</h4>
-        <ul class="mb-0"><li>Faster credit evaluation</li><li>Reduced default risk</li>
-        <li>Better decision-making</li><li>Increased operational efficiency</li></ul></div></div>
-      <div class="col-md-6"><div class="card h-100 p-4"><h4>For Customers</h4>
-        <ul class="mb-0"><li>Faster responses</li><li>Fair and objective evaluations</li>
-        <li>Improved user experience</li></ul></div></div>
     </div>
   </div>
 </section>

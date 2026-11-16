@@ -1,7 +1,7 @@
 """The home page shows the project documentation (PGC) as readable page content, not only as a file."""
 import pytest
 
-PGC_IDS = ["pgc-title", "pgc-problem", "pgc-objectives", "pgc-framework", "pgc-methodology", "pgc-references"]
+PGC_IDS = ["pgc-title", "pgc-problem", "pgc-general", "pgc-specific", "pgc-framework", "pgc-methodology", "pgc-references"]
 
 
 @pytest.fixture
